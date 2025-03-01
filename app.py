@@ -531,38 +531,35 @@ if user_query:
                 else:
                     sql_prompt = get_sql_prompt(schema, st.session_state.chat_history, user_query)
                     sql_query = get_gemini_response(sql_prompt)
-                if sql_query and not sql_query.startswith("Erreur:"):
+                
+                # Vérification si la réponse semble être une erreur ou un message de quota
+                if (not sql_query or 
+                    "limites de quota" in sql_query.lower() or 
+                    "n'ai pas pu générer" in sql_query.lower() or 
+                    sql_query.startswith("Erreur:")):
+                    fallback_query = generate_simple_sql(user_query, schema)
+                    st.markdown("**Requête SQL générée (mode secours):**")
+                    st.code(fallback_query, language="sql")
+                    sql_query = fallback_query
+                else:
                     if show_sql:
                         st.markdown("**Requête SQL générée:**")
                         st.code(sql_query, language="sql")
-                    sql_result = execute_sql_query(sql_query)
-                    if show_results_as_table:
-                        df = display_sql_result_as_table(sql_result)
-                        if df is not None and not df.empty:
-                            st.markdown("**Résultats:**")
-                            st.dataframe(df, use_container_width=True)
-                    if use_simple_mode:
-                        response = generate_simple_response(user_query, sql_result)
-                    else:
-                        nl_prompt = get_nl_response_prompt(schema, user_query, sql_query, sql_result)
-                        response = get_gemini_response(nl_prompt)
-                        if response.startswith("Erreur:"):
-                            response = generate_simple_response(user_query, sql_result)
-                    st.markdown("**Analyse:**")
-                    st.markdown(response)
-                    st.session_state.chat_history.append(AIMessage(content=response))
-                else:
-                    fallback_query = generate_simple_sql(user_query, schema)
-                    if show_sql:
-                        st.markdown("**Requête SQL générée (mode secours):**")
-                        st.code(fallback_query, language="sql")
-                    sql_result = execute_sql_query(fallback_query)
-                    if show_results_as_table:
-                        df = display_sql_result_as_table(sql_result)
-                        if df is not None and not df.empty:
-                            st.markdown("**Résultats:**")
-                            st.dataframe(df, use_container_width=True)
+                
+                sql_result = execute_sql_query(sql_query)
+                if show_results_as_table:
+                    df = display_sql_result_as_table(sql_result)
+                    if df is not None and not df.empty:
+                        st.markdown("**Résultats:**")
+                        st.dataframe(df, use_container_width=True)
+                
+                if use_simple_mode:
                     response = generate_simple_response(user_query, sql_result)
-                    st.markdown("**Analyse (mode simplifié):**")
-                    st.markdown(response)
-                    st.session_state.chat_history.append(AIMessage(content=response))
+                else:
+                    nl_prompt = get_nl_response_prompt(schema, user_query, sql_query, sql_result)
+                    response = get_gemini_response(nl_prompt)
+                    if response.startswith("Erreur:"):
+                        response = generate_simple_response(user_query, sql_result)
+                st.markdown("**Analyse:**")
+                st.markdown(response)
+                st.session_state.chat_history.append(AIMessage(content=response))
