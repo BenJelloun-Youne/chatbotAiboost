@@ -11,7 +11,7 @@ from datetime import datetime
 # === Configuration API et base de données ===
 
 # Configurez votre API Gemini (remplacez par votre clé)
-genai.configure(api_key="VOTRE_CLE_API_ICI")
+genai.configure(api_key="AIzaSyCwWitJOAQDe8jsogTiPmep5ToOw_Vl-Rk")
 
 # Chemin vers votre base de données SQLite
 DB_PATH = "call_center_full_extended.db"
