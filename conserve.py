@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 genai.configure(api_key="AIzaSyCwWitJOAQDe8jsogTiPmep5ToOw_Vl-Rk")
 
 # Connexion automatique à la base de données SQLite
-DB_PATH = "C:/Users/Original Shop/OneDrive/Desktop/ENSIAS/Stage_1A/MyChatbot/call_center_full_extended.db"
+DB_PATH = "call_center_full_extended.db"
 db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
 
 def get_schema(db):
