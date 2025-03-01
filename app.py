@@ -6,10 +6,19 @@ import pandas as pd
 import re
 import os
 
-# Configuration de l'API Gemini (clé directement intégrée)
+# Configuration de l'API Gemini avec la version correcte du modèle
 genai.configure(api_key="AIzaSyCwWitJOAQDe8jsogTiPmep5ToOw_Vl-Rk")
 
-# Connexion à la base de données SQLite (chemin adapté pour Streamlit Cloud)
+# Liste des modèles disponibles pour vérification
+def list_available_models():
+    try:
+        models = genai.list_models()
+        available_models = [model.name for model in models]
+        return available_models
+    except Exception as e:
+        return f"Erreur lors de la liste des modèles: {str(e)}"
+
+# Connexion à la base de données SQLite
 DB_PATH = "call_center_full_extended.db"
 db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
 
@@ -46,6 +55,42 @@ def execute_sql_query(query):
     except Exception as e:
         st.error(f"Erreur lors de l'exécution de la requête SQL: {str(e)}")
         return f"Erreur: {str(e)}"
+
+def get_gemini_response(prompt, max_retries=3):
+    """Obtient une réponse du modèle Gemini avec le modèle adapté."""
+    # Utilisation du modèle gemini-1.0-pro à la place de gemini-pro
+    model_name = "gemini-1.5-pro"  # Version la plus récente
+    fallback_models = ["gemini-1.0-pro", "gemini-pro-vision"]  # Modèles de secours
+    
+    for attempt in range(max_retries):
+        try:
+            # Essayer d'abord avec le modèle principal
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            st.warning(f"Tentative {attempt+1} avec {model_name} échouée: {e}")
+            
+            # Si c'est une erreur de modèle non trouvé, essayer avec les modèles de secours
+            if "not found" in str(e).lower() and attempt < len(fallback_models):
+                try:
+                    backup_model = genai.GenerativeModel(fallback_models[attempt])
+                    response = backup_model.generate_content(prompt)
+                    # Si cela fonctionne, mémoriser ce modèle pour les prochains appels
+                    model_name = fallback_models[attempt]
+                    return response.text.strip()
+                except Exception as backup_error:
+                    st.warning(f"Modèle de secours {fallback_models[attempt]} échoué: {backup_error}")
+            
+            # Si c'est la dernière tentative, renvoyer une erreur
+            if attempt == max_retries - 1:
+                # Essayer une dernière tentative avec un modèle basique comme fallback final
+                try:
+                    basic_model = genai.GenerativeModel("text-bison@001")
+                    response = basic_model.generate_content(prompt)
+                    return response.text.strip()
+                except:
+                    return f"Erreur: Impossible d'accéder aux modèles Gemini. Vérifiez votre clé API et les modèles disponibles."
 
 def get_sql_prompt(schema, chat_history, question):
     """Crée le prompt pour la génération de requête SQL."""
@@ -95,21 +140,6 @@ def get_nl_response_prompt(schema, question, sql_query, sql_result):
         sql_query=sql_query,
         sql_result=sql_result
     )
-
-def get_gemini_response(prompt, max_retries=3):
-    """Obtient une réponse du modèle Gemini."""
-    for attempt in range(max_retries):
-        try:
-            model = genai.GenerativeModel('gemini-pro')
-            response = model.generate_content(prompt)
-            return response.text.strip()
-        except Exception as e:
-            if attempt == max_retries - 1:
-                st.error(f"Erreur avec l'API Gemini après {max_retries} tentatives: {e}")
-                return f"Erreur: {str(e)}"
-            else:
-                st.warning(f"Tentative {attempt+1} échouée: {e}, nouvelle tentative...")
-                continue
 
 def display_sql_result_as_table(result):
     """Affiche le résultat SQL sous forme de tableau si possible."""
@@ -163,6 +193,12 @@ st.markdown("""
 st.title("📊 Assistants KPIs et DATA")
 st.markdown("Explorez vos données et KPIs du centre d'appels avec des questions en langage naturel.")
 
+# Vérification des modèles disponibles (à exécuter une seule fois)
+if 'available_models_checked' not in st.session_state:
+    available_models = list_available_models()
+    st.session_state.available_models = available_models
+    st.session_state.available_models_checked = True
+
 # Barre latérale avec informations sur le schéma
 with st.sidebar:
     st.header("Informations sur la base de données")
@@ -176,6 +212,14 @@ with st.sidebar:
     st.subheader("Options")
     show_sql = st.checkbox("Afficher les requêtes SQL", value=True)
     show_results_as_table = st.checkbox("Afficher les résultats sous forme de tableau", value=True)
+    
+    # Afficher les modèles disponibles
+    with st.expander("Modèles Gemini disponibles", expanded=False):
+        if isinstance(st.session_state.available_models, list):
+            for model in st.session_state.available_models:
+                st.write(f"- {model}")
+        else:
+            st.write(st.session_state.available_models)
     
     # À propos
     st.markdown("---")
