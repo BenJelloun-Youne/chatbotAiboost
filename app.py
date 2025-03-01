@@ -11,9 +11,9 @@ from datetime import datetime
 # === Configuration API et base de données ===
 
 # Configurez votre API Gemini (remplacez par votre clé)
-genai.configure(api_key="AIzaSyCwWitJOAQDe8jsogTiPmep5ToOw_Vl-Rk")
+genai.configure(api_key="VOTRE_CLE_API_ICI")
 
-# Connexion à la base de données SQLite
+# Chemin vers votre base de données SQLite
 DB_PATH = "call_center_full_extended.db"
 db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
 
@@ -261,7 +261,7 @@ def get_simple_response(type_message):
 def get_gemini_response(prompt, max_retries=3, backoff_factor=2):
     """
     Obtient une réponse du modèle Gemini.
-    Si le modèle retourne une erreur (quota ou indisponibilité), on attend et on réessaie.
+    En cas d'erreur ou de dépassement de quota, on attend puis on réessaie.
     """
     models_to_try = ["gemini-pro", "gemini-1.0-pro", "text-bison@001"]
     for model_name in models_to_try:
@@ -405,7 +405,7 @@ def display_sql_result_as_table(result):
 # === Configuration de l'interface Streamlit ===
 
 st.set_page_config(
-    page_title="Assistants KPIs et DATA", 
+    page_title="Assistant KPIs et DATA", 
     page_icon="📊", 
     layout="wide",
     initial_sidebar_state="expanded"
@@ -424,8 +424,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Titre et description
-st.title("📊 Assistants KPIs et DATA")
-st.markdown("Explorez vos données et KPIs du centre d'appels avec des questions en langage naturel.")
+st.title("📊 Assistant KPIs et DATA")
+st.markdown("Interrogez votre base de données en langage naturel pour obtenir des réponses sur vos KPIs.")
 
 # === Chargement et affichage des KPIs de base ===
 
@@ -493,7 +493,7 @@ with st.sidebar:
     """)
     st.markdown("---")
     st.markdown("### À propos")
-    st.markdown("Cet assistant vous permet d'interroger votre base de données via des questions en langage naturel pour analyser vos KPIs et données.")
+    st.markdown("Cet assistant vous permet d'interroger votre base de données via des questions en langage naturel pour analyser vos KPIs.")
 
 # === Historique du chat ===
 
@@ -524,15 +524,15 @@ if user_query:
             st.session_state.chat_history.append(AIMessage(content=response))
         else:
             with st.spinner("Analyse de votre question..."):
-                schema = schema_info  # On utilise le schéma défini dans la sidebar
-                # Génération de la requête SQL (mode API ou simple)
+                schema = schema_info  # Utilisation du schéma défini dans la sidebar
+                # Génération de la requête SQL (mode API ou mode simple)
                 if use_simple_mode:
                     sql_query = generate_simple_sql(user_query, schema)
                 else:
                     sql_prompt = get_sql_prompt(schema, st.session_state.chat_history, user_query)
                     sql_query = get_gemini_response(sql_prompt)
                 
-                # Vérification si la réponse semble être une erreur ou un message de quota
+                # Vérification de la validité de la requête générée
                 if (not sql_query or 
                     "limites de quota" in sql_query.lower() or 
                     "n'ai pas pu générer" in sql_query.lower() or 
