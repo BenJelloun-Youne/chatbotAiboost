@@ -289,6 +289,28 @@ def get_gemini_response(prompt, max_retries=3, backoff_factor=2):
         return generate_simple_sql(question, get_schema(db))
     return "Erreur: Impossible d'accéder aux modèles Gemini. Passage en mode simplifié."
 
+@st.cache_resource
+def load_open_source_model():
+    """Charge et met en cache le modèle open source GPT-Neo via Hugging Face."""
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    model_name = "EleutherAI/gpt-neo-2.7B"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    return tokenizer, model
+
+def get_open_source_response(prompt, max_new_tokens=150):
+    """
+    Obtient une réponse en utilisant le modèle open source GPT-Neo.
+    """
+    try:
+        tokenizer, model = load_open_source_model()
+        inputs = tokenizer(prompt, return_tensors="pt")
+        outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=True, temperature=0.7)
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return response
+    except Exception as e:
+        return "Erreur: Impossible d'obtenir une réponse du modèle open source. " + str(e)
+
 def get_sql_prompt(schema, chat_history, question):
     """Crée le prompt pour générer une requête SQL à partir d'une question."""
     template = """
@@ -481,6 +503,8 @@ with st.sidebar:
     show_results_as_table = st.checkbox("Afficher les résultats sous forme de tableau", value=True)
     use_simple_mode = st.checkbox("Mode simplifié (sans API)", value=False, 
                                   help="Utiliser ce mode en cas de problème de quota avec l'API")
+    use_open_source_mode = st.checkbox("Utiliser modèle open source (via Hugging Face)", value=False,
+                                       help="Utiliser une alternative open source à Gemini")
     st.subheader("Exemples de questions")
     st.markdown("""
     - Combien d'agents avons-nous au total ?
@@ -525,9 +549,12 @@ if user_query:
         else:
             with st.spinner("Analyse de votre question..."):
                 schema = schema_info  # Utilisation du schéma défini dans la sidebar
-                # Génération de la requête SQL (mode API ou mode simple)
+                # Génération de la requête SQL (mode API, open source ou mode simple)
                 if use_simple_mode:
                     sql_query = generate_simple_sql(user_query, schema)
+                elif use_open_source_mode:
+                    sql_prompt = get_sql_prompt(schema, st.session_state.chat_history, user_query)
+                    sql_query = get_open_source_response(sql_prompt)
                 else:
                     sql_prompt = get_sql_prompt(schema, st.session_state.chat_history, user_query)
                     sql_query = get_gemini_response(sql_prompt)
@@ -553,8 +580,14 @@ if user_query:
                         st.markdown("**Résultats:**")
                         st.dataframe(df, use_container_width=True)
                 
+                # Génération de la réponse en langage naturel
                 if use_simple_mode:
                     response = generate_simple_response(user_query, sql_result)
+                elif use_open_source_mode:
+                    nl_prompt = get_nl_response_prompt(schema, user_query, sql_query, sql_result)
+                    response = get_open_source_response(nl_prompt)
+                    if response.startswith("Erreur:"):
+                        response = generate_simple_response(user_query, sql_result)
                 else:
                     nl_prompt = get_nl_response_prompt(schema, user_query, sql_query, sql_result)
                     response = get_gemini_response(nl_prompt)
