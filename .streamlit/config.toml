@@ -1,8 +1,9 @@
 [theme]
-primaryColor = "#1E3A8A"
-backgroundColor = "#F0F2F6"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#262730"
+primaryColor = "#0056B3"  # Bleu Majorelle légèrement adouci pour une meilleure lisibilité
+backgroundColor = "#F5F7FA"  # Un gris clair pour un effet moderne et élégant
+secondaryBackgroundColor = "#FFFFFF"  # Fond secondaire en blanc pour du contraste
+textColor = "#333333"  # Texte en gris foncé pour une bonne lisibilité
+accentColor = "#E76F51"  # Orange Hermès légèrement atténué pour ne pas être trop agressif
 font = "sans serif"
 
 [server]
