@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from openai import OpenAI
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_core.messages import AIMessage, HumanMessage
 import pandas as pd
@@ -7,15 +7,84 @@ import re
 import time
 import random
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+import streamlit.components.v1 as components
+
+# Chargement des variables d'environnement
+load_dotenv()
+
+# Configuration de la page
+st.set_page_config(
+    page_title="Assistant KPIs et DATA",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Style CSS personnalisé
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #f5f5f5;
+    }
+    .chat-message {
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-message.user {
+        background-color: #e3f2fd;
+    }
+    .chat-message.assistant {
+        background-color: #f5f5f5;
+    }
+    .stTextInput>div>div>input {
+        background-color: white;
+    }
+    .thinking {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .thinking-dots {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .thinking-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #2196f3;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+    .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+    .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # === Configuration API et base de données ===
-
-# Configurez votre API Gemini (remplacez par votre clé)
-genai.configure(api_key="AIzaSyCwWitJOAQDe8jsogTiPmep5ToOw_Vl-Rk")
+try:
+    # Configurez votre API OpenAI de manière sécurisée
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    if not os.getenv('OPENAI_API_KEY'):
+        st.error("Erreur : La clé API OpenAI n'est pas configurée. Veuillez vérifier le fichier .env")
+except Exception as e:
+    st.error(f"Erreur lors de l'initialisation de l'API OpenAI : {str(e)}")
 
 # Chemin vers votre base de données SQLite
-DB_PATH = "call_center_full_extended.db"
-db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
+try:
+    DB_PATH = "call_center_full_extended.db"
+    db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
+except Exception as e:
+    st.error(f"Erreur lors de la connexion à la base de données : {str(e)}")
 
 # === Fonctions utilitaires SQL et chat ===
 
@@ -41,9 +110,47 @@ def execute_sql_query(query):
         # Nettoyage de la requête
         clean_query = re.sub(r'```sql|```', '', query).strip()
         result = db.run(clean_query)
-        if not result or result.strip() == "":
+        
+        # Log de débogage
+        st.write(f"Requête exécutée: {clean_query}")
+        st.write(f"Résultat brut: {result}")
+        
+        # Vérification si le résultat est vide
+        if not result:
             return "Aucun résultat trouvé pour cette requête."
-        return result
+            
+        # Conversion du résultat en format texte
+        if isinstance(result, list) and len(result) > 0:
+            if isinstance(result[0], tuple):
+                # Pour les requêtes de comptage simples (un seul nombre)
+                if len(result) == 1 and len(result[0]) == 1:
+                    return str(result[0][0])
+                
+                # Pour les autres requêtes avec plusieurs colonnes
+                # Extraction des noms de colonnes de la requête
+                column_names = []
+                matches = re.findall(r'(?:AS\s+)(\w+)|COUNT\(\*\)\s+(?:AS\s+)?(\w+)', clean_query, re.IGNORECASE)
+                if matches:
+                    column_names = [m[0] or m[1] for m in matches if m[0] or m[1]]
+                else:
+                    # Si pas d'alias trouvés, extraire les noms des colonnes après SELECT
+                    select_part = clean_query.upper().split('FROM')[0].replace('SELECT', '').strip()
+                    columns = [col.strip().split()[-1] for col in select_part.split(',')]
+                    column_names = [col.split('.')[-1] for col in columns]
+                
+                if not column_names:  # Si toujours pas de noms de colonnes, utiliser des noms génériques
+                    column_names = [f"colonne_{i}" for i in range(len(result[0]))]
+                
+                # Création du résultat formaté
+                formatted_result = ",".join(column_names) + "\n"
+                for row in result:
+                    formatted_result += ",".join(str(value) for value in row) + "\n"
+                return formatted_result.strip()
+            else:
+                return str(result[0])
+        else:
+            return str(result)
+            
     except Exception as e:
         st.error(f"Erreur lors de l'exécution de la requête SQL: {str(e)}")
         return f"Erreur: {str(e)}"
@@ -53,15 +160,17 @@ def generate_simple_sql(question, schema):
     Génère une requête SQL simple basée sur des règles pour les cas communs.
     On se base ici sur des mots-clés pour déterminer la requête à générer.
     """
-    question = question.lower()
-    # Requêtes sur les agents
-    if "combien d'agent" in question or "nombre d'agent" in question:
-        return "SELECT COUNT(*) as nombre_agents FROM agents;"
+    question = question.lower().strip()
     
+    # Requêtes sur les agents
+    if any(pattern in question for pattern in ["combien d'agent", "nombre d'agent", "nombre agent"]):
+        return "SELECT COUNT(*) FROM agents;"
+    
+    # Requêtes sur les performances des agents
     if (("top" in question and "perform" in question) or 
         ("meilleur" in question and "agent" in question)):
         return """
-        SELECT a.agent_id, a.name, a.position, t.team_name, 
+        SELECT a.agent_id, a.name, t.team_name, 
                SUM(p.sales) as total_sales, 
                SUM(p.appointments) as total_appointments,
                ROUND(AVG(p.satisfaction_score), 2) as avg_satisfaction
@@ -69,34 +178,17 @@ def generate_simple_sql(question, schema):
         JOIN performances p ON a.agent_id = p.agent_id
         JOIN teams t ON a.team_id = t.team_id
         GROUP BY a.agent_id
-        ORDER BY total_sales DESC, total_appointments DESC
-        LIMIT 5;
-        """
-    
-    if (("low" in question and "perform" in question) or 
-        ("pire" in question and "agent" in question)):
-        return """
-        SELECT a.agent_id, a.name, a.position, t.team_name, 
-               SUM(p.sales) as total_sales, 
-               SUM(p.appointments) as total_appointments,
-               ROUND(AVG(p.satisfaction_score), 2) as avg_satisfaction
-        FROM agents a
-        JOIN performances p ON a.agent_id = p.agent_id
-        JOIN teams t ON a.team_id = t.team_id
-        GROUP BY a.agent_id
-        ORDER BY total_sales ASC, total_appointments ASC
+        ORDER BY total_sales DESC
         LIMIT 5;
         """
     
     # Requêtes sur les équipes
-    if ("tableau" in question or "performance" in question) and "equipe" in question:
+    if ("equipe" in question or "team" in question) and ("performance" in question or "resultat" in question):
         return """
         SELECT t.team_name, 
                COUNT(DISTINCT a.agent_id) as nombre_agents,
                SUM(p.sales) as total_ventes,
-               SUM(p.appointments) as total_rdv,
-               ROUND(AVG(p.satisfaction_score), 2) as satisfaction_moyenne,
-               SUM(p.calls_made) as total_appels
+               ROUND(AVG(p.satisfaction_score), 2) as satisfaction_moyenne
         FROM teams t
         JOIN agents a ON t.team_id = a.team_id
         JOIN performances p ON a.agent_id = p.agent_id
@@ -104,66 +196,37 @@ def generate_simple_sql(question, schema):
         ORDER BY total_ventes DESC;
         """
     
-    # Requêtes sur les objectifs
-    if "objectif" in question and "atteint" in question:
-        return """
-        SELECT a.agent_id, a.name, t.team_name,
-               SUM(p.sales) as ventes_realisees, 
-               pg.sales_target as objectif_ventes,
-               CASE WHEN SUM(p.sales) >= pg.sales_target THEN 'Oui' ELSE 'Non' END as objectif_atteint
-        FROM agents a
-        JOIN performances p ON a.agent_id = p.agent_id
-        JOIN teams t ON a.team_id = t.team_id
-        JOIN performance_goals pg ON a.agent_id = pg.agent_id
-        GROUP BY a.agent_id
-        ORDER BY (SUM(p.sales) * 1.0 / pg.sales_target) DESC;
-        """
-    
-    # Requêtes sur présence et retards
-    if "retard" in question or "absent" in question:
-        return """
-        SELECT a.agent_id, a.name, t.team_name,
-               COUNT(att.attendance_id) as jours_travailles,
-               SUM(CASE WHEN att.is_present = 0 THEN 1 ELSE 0 END) as absences,
-               SUM(CASE WHEN att.tardiness_minutes > 0 THEN 1 ELSE 0 END) as jours_avec_retard,
-               SUM(att.tardiness_minutes) as minutes_retard_total
-        FROM agents a
-        JOIN attendance att ON a.agent_id = att.agent_id
-        JOIN teams t ON a.team_id = t.team_id
-        GROUP BY a.agent_id
-        ORDER BY minutes_retard_total DESC;
-        """
-    
     # Requêtes sur les bonus
     if "bonus" in question:
         return """
-        SELECT a.agent_id, a.name, t.team_name,
+        SELECT a.name, t.team_name,
                COUNT(b.bonus_id) as nombre_bonus,
-               SUM(b.bonus_amount) as montant_total_bonus,
-               GROUP_CONCAT(DISTINCT b.reason) as raisons
+               SUM(b.bonus_amount) as montant_total_bonus
         FROM agents a
         JOIN bonuses b ON a.agent_id = b.agent_id
         JOIN teams t ON a.team_id = t.team_id
         GROUP BY a.agent_id
-        ORDER BY montant_total_bonus DESC;
+        ORDER BY montant_total_bonus DESC
+        LIMIT 5;
         """
     
     # Requêtes sur la satisfaction client
     if "satisfaction" in question:
         return """
-        SELECT a.agent_id, a.name, t.team_name,
-               ROUND(AVG(p.satisfaction_score), 2) as score_moyen_satisfaction,
+        SELECT a.name, t.team_name,
+               ROUND(AVG(p.satisfaction_score), 2) as satisfaction_moyenne,
                COUNT(p.performance_id) as nombre_evaluations
         FROM agents a
         JOIN performances p ON a.agent_id = p.agent_id
         JOIN teams t ON a.team_id = t.team_id
         GROUP BY a.agent_id
-        ORDER BY score_moyen_satisfaction DESC;
+        ORDER BY satisfaction_moyenne DESC
+        LIMIT 5;
         """
     
-    # Requête générique (aperçu des performances globales)
+    # Requête par défaut (aperçu des performances globales)
     return """
-    SELECT a.agent_id, a.name, t.team_name,
+    SELECT a.name, t.team_name,
            SUM(p.calls_made) as appels_total,
            SUM(p.sales) as ventes_total,
            SUM(p.appointments) as rdv_total,
@@ -173,7 +236,7 @@ def generate_simple_sql(question, schema):
     JOIN teams t ON a.team_id = t.team_id
     GROUP BY a.agent_id
     ORDER BY ventes_total DESC
-    LIMIT 10;
+    LIMIT 5;
     """
 
 def is_greeting_or_small_talk(text):
@@ -211,83 +274,115 @@ def get_simple_response(type_message):
     if type_message == "greeting":
         if 5 <= hour < 12:
             responses = [
-                "Bonjour ! Comment puis-je vous aider avec vos données aujourd'hui ?",
-                "Bonjour ! Je suis prêt à analyser vos KPIs. Que souhaitez-vous savoir ?"
+                "Bonjour ! Je suis là pour vous aider à analyser vos données. Voici ce que je peux faire :\n\n" +
+                "1. Analyser les performances des agents et des équipes\n" +
+                "2. Vérifier l'atteinte des objectifs\n" +
+                "3. Examiner les retards et l'assiduité\n" +
+                "4. Analyser les bonus et récompenses\n" +
+                "5. Étudier la satisfaction client\n\n" +
+                "Que souhaitez-vous savoir ?",
+                
+                "Bonjour ! Je peux vous aider à explorer vos KPIs. Par exemple, vous pouvez me demander :\n\n" +
+                "- Combien d'agents avons-nous ?\n" +
+                "- Quels sont nos meilleurs agents ?\n" +
+                "- Comment performent nos équipes ?\n" +
+                "- Qui a reçu le plus de bonus ?\n\n" +
+                "Quelle information recherchez-vous ?"
             ]
         elif 12 <= hour < 18:
             responses = [
-                "Bon après-midi ! Comment puis-je vous aider avec vos données aujourd'hui ?",
-                "Bonjour ! Je suis prêt à analyser vos KPIs. Que souhaitez-vous savoir ?"
+                "Bon après-midi ! Je suis là pour vous aider à analyser vos données. Voici ce que je peux faire :\n\n" +
+                "1. Analyser les performances des agents et des équipes\n" +
+                "2. Vérifier l'atteinte des objectifs\n" +
+                "3. Examiner les retards et l'assiduité\n" +
+                "4. Analyser les bonus et récompenses\n" +
+                "5. Étudier la satisfaction client\n\n" +
+                "Que souhaitez-vous savoir ?",
+                
+                "Bon après-midi ! Je peux vous aider à explorer vos KPIs. Par exemple, vous pouvez me demander :\n\n" +
+                "- Combien d'agents avons-nous ?\n" +
+                "- Quels sont nos meilleurs agents ?\n" +
+                "- Comment performent nos équipes ?\n" +
+                "- Qui a reçu le plus de bonus ?\n\n" +
+                "Quelle information recherchez-vous ?"
             ]
         else:
             responses = [
-                "Bonsoir ! Comment puis-je vous aider avec vos données aujourd'hui ?",
-                "Bonsoir ! Je suis prêt à analyser vos KPIs. Que souhaitez-vous savoir ?"
+                "Bonsoir ! Je suis là pour vous aider à analyser vos données. Voici ce que je peux faire :\n\n" +
+                "1. Analyser les performances des agents et des équipes\n" +
+                "2. Vérifier l'atteinte des objectifs\n" +
+                "3. Examiner les retards et l'assiduité\n" +
+                "4. Analyser les bonus et récompenses\n" +
+                "5. Étudier la satisfaction client\n\n" +
+                "Que souhaitez-vous savoir ?",
+                
+                "Bonsoir ! Je peux vous aider à explorer vos KPIs. Par exemple, vous pouvez me demander :\n\n" +
+                "- Combien d'agents avons-nous ?\n" +
+                "- Quels sont nos meilleurs agents ?\n" +
+                "- Comment performent nos équipes ?\n" +
+                "- Qui a reçu le plus de bonus ?\n\n" +
+                "Quelle information recherchez-vous ?"
             ]
         return random.choice(responses)
     elif type_message == "small_talk":
-        return random.choice([
-            "Je vais très bien, merci ! Que souhaitez-vous analyser aujourd'hui ?",
-            "Tout va bien ! Comment puis-je vous aider à explorer vos KPIs ?"
-        ])
+        return "Je vais très bien, merci ! Je suis là pour vous aider à analyser vos données. Que souhaitez-vous savoir sur vos KPIs ?"
     elif type_message == "thanks":
-        return random.choice([
-            "Je vous en prie !",
-            "Avec plaisir, n'hésitez pas si vous avez d'autres questions."
-        ])
+        return "Je vous en prie ! N'hésitez pas si vous avez d'autres questions sur vos KPIs."
     elif type_message == "goodbye":
-        return random.choice([
-            "Au revoir ! Revenez quand vous voulez pour analyser vos données.",
-            "À bientôt !"
-        ])
+        return "Au revoir ! N'hésitez pas à revenir si vous avez besoin d'analyser vos données."
     elif type_message == "help":
         return (
             "Je suis votre assistant KPIs et DATA. Voici ce que je peux faire :\n\n"
-            "1. Analyser les performances (agents, équipes, etc.)\n"
+            "1. Analyser les performances des agents et des équipes\n"
             "2. Vérifier l'atteinte des objectifs\n"
-            "3. Analyser la présence et les retards\n"
-            "4. Examiner les bonus\n"
-            "5. Analyser la satisfaction client\n\n"
-            "Par exemple, vous pouvez demander : « Quels sont les meilleurs agents ? » ou « Montre-moi les performances des équipes »."
+            "3. Examiner les retards et l'assiduité\n"
+            "4. Analyser les bonus et récompenses\n"
+            "5. Étudier la satisfaction client\n\n"
+            "Par exemple, vous pouvez me demander :\n"
+            "- Combien d'agents avons-nous ?\n"
+            "- Quels sont nos meilleurs agents ?\n"
+            "- Comment performent nos équipes ?\n"
+            "- Qui a reçu le plus de bonus ?"
         )
     elif type_message == "short_question":
-        return random.choice([
-            "Pouvez-vous préciser votre demande afin que je puisse mieux vous aider ?",
-            "Merci de donner plus de détails sur votre question."
-        ])
+        return (
+            "Je peux vous aider à analyser vos données, mais j'ai besoin de plus de détails. Par exemple, vous pouvez me demander :\n\n"
+            "- Combien d'agents avons-nous ?\n"
+            "- Quels sont nos meilleurs agents ?\n"
+            "- Comment performent nos équipes ?\n"
+            "- Qui a reçu le plus de bonus ?\n\n"
+            "Quelle information recherchez-vous précisément ?"
+        )
     else:
-        return "Comment puis-je vous aider avec vos données aujourd'hui ?"
+        return (
+            "Je suis là pour vous aider à analyser vos données. Voici ce que je peux faire :\n\n"
+            "1. Analyser les performances des agents et des équipes\n"
+            "2. Vérifier l'atteinte des objectifs\n"
+            "3. Examiner les retards et l'assiduité\n"
+            "4. Analyser les bonus et récompenses\n"
+            "5. Étudier la satisfaction client\n\n"
+            "Que souhaitez-vous savoir ?"
+        )
 
 def get_gemini_response(prompt, max_retries=3, backoff_factor=2):
-    """
-    Obtient une réponse du modèle Gemini.
-    En cas d'erreur ou de dépassement de quota, on attend puis on réessaie.
-    """
-    models_to_try = ["gemini-pro", "gemini-1.0-pro", "text-bison@001"]
-    for model_name in models_to_try:
-        for attempt in range(max_retries):
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(prompt)
-                return response.text.strip()
-            except Exception as e:
-                if "429" in str(e) or "404" in str(e):
-                    wait_time = backoff_factor ** attempt
-                    st.warning(f"Modèle {model_name} indisponible ou quota atteint, attente de {wait_time} secondes...")
-                    time.sleep(wait_time)
-                    if attempt == max_retries - 1:
-                        if "Convertissez cette question en requête SQL" in prompt:
-                            question = prompt.split("Question utilisateur:")[-1].strip()
-                            return generate_simple_sql(question, get_schema(db))
-                        return "Je n'ai pas pu générer une réponse détaillée en raison des limites de quota."
-                else:
-                    st.warning(f"Tentative {attempt+1} avec {model_name} échouée: {e}")
-                    if attempt == max_retries - 1:
-                        break
-    if "Convertissez cette question en requête SQL" in prompt:
-        question = prompt.split("Question utilisateur:")[-1].strip()
-        return generate_simple_sql(question, get_schema(db))
-    return "Erreur: Impossible d'accéder aux modèles Gemini. Passage en mode simplifié."
+    """Génère une réponse en utilisant l'API OpenAI."""
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Vous êtes un assistant spécialisé dans l'analyse de données et la génération de requêtes SQL."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                st.error(f"Erreur lors de la génération de la réponse: {str(e)}")
+                return "Désolé, je n'ai pas pu générer de réponse. Veuillez réessayer."
+            time.sleep(backoff_factor ** attempt)
 
 @st.cache_resource
 def load_open_source_model():
@@ -424,175 +519,343 @@ def display_sql_result_as_table(result):
     except Exception:
         return None
 
+def get_query_type(question):
+    """Détermine le type de requête à partir de la question."""
+    question = question.lower().strip()
+    
+    # Mots-clés plus flexibles pour la détection
+    performance_keywords = ["perf", "performance", "meilleur", "top", "bon", "excellent", "fort"]
+    count_keywords = ["combien", "nombre", "total", "quantité"]
+    team_keywords = ["équipe", "team", "groupe", "service"]
+    bonus_keywords = ["bonus", "prime", "récompense", "gratification"]
+    satisfaction_keywords = ["satisfaction", "client", "évaluation", "note", "score"]
+    attendance_keywords = ["présence", "absent", "retard", "punctualité"]
+    
+    # Détection plus intelligente
+    words = question.split()
+    performance_count = sum(1 for word in words if word in performance_keywords)
+    count_count = sum(1 for word in words if word in count_keywords)
+    team_count = sum(1 for word in words if word in team_keywords)
+    bonus_count = sum(1 for word in words if word in bonus_keywords)
+    satisfaction_count = sum(1 for word in words if word in satisfaction_keywords)
+    attendance_count = sum(1 for word in words if word in attendance_keywords)
+    
+    # Décision basée sur le nombre de mots-clés trouvés
+    if performance_count > 0:
+        return "performance"
+    elif count_count > 0:
+        return "count"
+    elif team_count > 0:
+        return "team"
+    elif bonus_count > 0:
+        return "bonus"
+    elif satisfaction_count > 0:
+        return "satisfaction"
+    elif attendance_count > 0:
+        return "attendance"
+    
+    # Si aucun mot-clé n'est trouvé, on essaie de deviner d'après le contexte
+    if any(word in question for word in ["agent", "employé", "collaborateur"]):
+        return "performance"
+    elif any(word in question for word in ["vente", "chiffre", "résultat"]):
+        return "performance"
+    elif any(word in question for word in ["temps", "heure", "jour"]):
+        return "attendance"
+    
+    return "default"
+
+def format_response(result, query_type):
+    """Formate la réponse en fonction du type de requête."""
+    try:
+        if not result:
+            return "Aucun résultat trouvé."
+            
+        if isinstance(result, str):
+            return result
+            
+        if isinstance(result, list):
+            if not result:
+                return "Aucun résultat trouvé."
+                
+            if query_type == "count":
+                return f"Il y a actuellement {result[0]} agents dans le centre d'appels."
+                
+            elif query_type == "performance":
+                response = "Voici les performances des agents :\n\n"
+                for agent in result:
+                    if isinstance(agent, (list, tuple)):
+                        # Vérification de la longueur et des valeurs
+                        name = str(agent[0]) if len(agent) > 0 and agent[0] is not None else "N/A"
+                        team = str(agent[1]) if len(agent) > 1 and agent[1] is not None else "N/A"
+                        calls = str(agent[2]) if len(agent) > 2 and agent[2] is not None else "N/A"
+                        sales = str(agent[3]) if len(agent) > 3 and agent[3] is not None else "N/A"
+                        appointments = str(agent[4]) if len(agent) > 4 and agent[4] is not None else "N/A"
+                        satisfaction = str(agent[5]) if len(agent) > 5 and agent[5] is not None else "N/A"
+                        
+                        response += f"• {name} ({team}) :\n"
+                        response += f"  - Appels : {calls}\n"
+                        response += f"  - Ventes : {sales}\n"
+                        response += f"  - RDV : {appointments}\n"
+                        response += f"  - Satisfaction : {satisfaction}/5\n\n"
+                return response
+                
+            elif query_type == "team":
+                response = "Voici les performances par équipe :\n\n"
+                for team in result:
+                    if isinstance(team, (list, tuple)):
+                        name = str(team[0]) if len(team) > 0 and team[0] is not None else "N/A"
+                        agents = str(team[1]) if len(team) > 1 and team[1] is not None else "N/A"
+                        sales = str(team[2]) if len(team) > 2 and team[2] is not None else "N/A"
+                        satisfaction = str(team[3]) if len(team) > 3 and team[3] is not None else "N/A"
+                        
+                        response += f"• {name} :\n"
+                        response += f"  - Nombre d'agents : {agents}\n"
+                        response += f"  - Ventes totales : {sales}\n"
+                        response += f"  - Satisfaction moyenne : {satisfaction}/5\n\n"
+                return response
+                
+        return str(result)
+    except Exception as e:
+        return f"Une erreur s'est produite lors du formatage de la réponse : {str(e)}"
+
+def generate_sql_query(question, query_type):
+    """Génère la requête SQL appropriée selon le type de question."""
+    if query_type == "count":
+        return "SELECT COUNT(*) FROM agents;"
+        
+    elif query_type == "performance":
+        return """
+        SELECT a.name, t.team_name,
+               SUM(p.calls_made) as appels_total,
+               SUM(p.sales) as ventes_total,
+               SUM(p.appointments) as rdv_total,
+               ROUND(AVG(p.satisfaction_score), 2) as satisfaction_moyenne
+        FROM agents a
+        JOIN performances p ON a.agent_id = p.agent_id
+        JOIN teams t ON a.team_id = t.team_id
+        GROUP BY a.agent_id
+        ORDER BY ventes_total DESC
+        LIMIT 5;
+        """
+        
+    elif query_type == "team":
+        return """
+        SELECT t.team_name,
+               COUNT(DISTINCT a.agent_id) as nombre_agents,
+               SUM(p.sales) as ventes_total,
+               ROUND(AVG(p.satisfaction_score), 2) as satisfaction_moyenne
+        FROM teams t
+        JOIN agents a ON t.team_id = a.team_id
+        JOIN performances p ON a.agent_id = p.agent_id
+        GROUP BY t.team_id
+        ORDER BY ventes_total DESC;
+        """
+        
+    elif query_type == "bonus":
+        return """
+        SELECT a.name, t.team_name,
+               COUNT(b.bonus_id) as nombre_bonus,
+               SUM(b.bonus_amount) as montant_total
+        FROM agents a
+        JOIN bonuses b ON a.agent_id = b.agent_id
+        JOIN teams t ON a.team_id = t.team_id
+        GROUP BY a.agent_id
+        ORDER BY montant_total DESC
+        LIMIT 5;
+        """
+        
+    elif query_type == "satisfaction":
+        return """
+        SELECT a.name, t.team_name,
+               ROUND(AVG(p.satisfaction_score), 2) as satisfaction_moyenne,
+               COUNT(p.performance_id) as nombre_evaluations
+        FROM agents a
+        JOIN performances p ON a.agent_id = p.agent_id
+        JOIN teams t ON a.team_id = t.team_id
+        GROUP BY a.agent_id
+        HAVING nombre_evaluations >= 10
+        ORDER BY satisfaction_moyenne DESC
+        LIMIT 5;
+        """
+        
+    elif query_type == "attendance":
+        return """
+        SELECT a.name, t.team_name,
+               COUNT(att.attendance_id) as jours_travailles,
+               SUM(CASE WHEN att.is_present = 0 THEN 1 ELSE 0 END) as absences,
+               SUM(att.tardiness_minutes) as minutes_retard_total
+        FROM agents a
+        JOIN attendance att ON a.agent_id = att.agent_id
+        JOIN teams t ON a.team_id = t.team_id
+        GROUP BY a.agent_id
+        ORDER BY minutes_retard_total DESC
+        LIMIT 5;
+        """
+    
+    return None
+
+# Ajout de la gestion de l'historique
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+
+def get_contextual_response(question, chat_history):
+    """Génère une réponse contextuelle en fonction de l'historique de la conversation."""
+    # Analyse du contexte de la conversation
+    context = " ".join([msg["content"] for msg in chat_history[-3:]])  # Derniers 3 messages
+    
+    # Détection du type de conversation
+    if any(word in question.lower() for word in ["bonjour", "salut", "hello", "coucou"]):
+        return "Bonjour ! Je suis votre assistant pour l'analyse des données. Comment puis-je vous aider aujourd'hui ?"
+    
+    elif any(word in question.lower() for word in ["merci", "thanks", "thank you"]):
+        return "Je vous en prie ! N'hésitez pas si vous avez d'autres questions."
+    
+    elif any(word in question.lower() for word in ["au revoir", "bye", "à plus"]):
+        return "Au revoir ! N'hésitez pas à revenir si vous avez besoin d'autres analyses."
+    
+    # Si la question est courte ou vague
+    if len(question.split()) < 3:
+        return "Je peux vous aider à analyser vos données, mais j'ai besoin de plus de détails. Par exemple, vous pouvez me demander :\n\n" + \
+               "- Combien d'agents avons-nous ?\n" + \
+               "- Quels sont nos meilleurs agents ?\n" + \
+               "- Comment performent nos équipes ?\n" + \
+               "- Qui a reçu le plus de bonus ?\n\n" + \
+               "Quelle information recherchez-vous précisément ?"
+    
+    return None
+
+def process_user_input(user_input):
+    """Traite l'entrée utilisateur et retourne une réponse appropriée."""
+    try:
+        # Vérification de la réponse contextuelle
+        contextual_response = get_contextual_response(user_input, st.session_state.chat_history)
+        if contextual_response:
+            return contextual_response
+            
+        # Vérification si c'est une salutation ou une petite conversation
+        is_small_talk, talk_type = is_greeting_or_small_talk(user_input)
+        if is_small_talk:
+            return get_simple_response(talk_type)
+            
+        # Récupération du schéma de la base de données
+        schema = get_schema(db)
+        
+        # Détermination du type de requête
+        query_type = get_query_type(user_input)
+        
+        # Génération de la requête SQL
+        sql_query = generate_sql_query(user_input, query_type)
+        if not sql_query:
+            return "Je n'ai pas pu comprendre votre demande. Pouvez-vous reformuler votre question ?"
+        
+        # Exécution de la requête
+        result = execute_sql_query(sql_query)
+        
+        # Formatage de la réponse
+        formatted_response = format_response(result, query_type)
+        
+        # Ajout d'une analyse supplémentaire si nécessaire
+        if query_type == "performance":
+            formatted_response += "\n\nAnalyse : Ces agents se distinguent par leurs excellentes performances en termes de ventes et de satisfaction client."
+        
+        return formatted_response
+        
+    except Exception as e:
+        return f"Désolé, une erreur s'est produite : {str(e)}"
+
+def display_thinking_animation():
+    """Affiche une animation de réflexion."""
+    st.markdown("""
+        <div class="thinking">
+            <div class="thinking-dots">
+                <div class="thinking-dot"></div>
+                <div class="thinking-dot"></div>
+                <div class="thinking-dot"></div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
 # === Configuration de l'interface Streamlit ===
-
-st.set_page_config(
-    page_title="Assistant KPIs et DATA", 
-    page_icon="📊", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# CSS personnalisé pour améliorer le style
+st.title("📊 Assistant KPIs et DATA")
 st.markdown("""
-<style>
-    .main { background-color: #f5f7f9; }
-    .stApp { max-width: 1200px; margin: 0 auto; }
-    .chat-container { background-color: white; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .metric-card { background-color: white; border-radius: 5px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
-    .metric-value { font-size: 24px; font-weight: bold; color: #1E3A8A; }
-    .metric-label { font-size: 14px; color: #6B7280; }
-</style>
+    <div style='text-align: center; margin-bottom: 2rem;'>
+        <p style='color: #666; font-size: 1.1rem;'>
+            Interrogez votre base de données en langage naturel pour obtenir des réponses sur vos KPIs.
+        </p>
+    </div>
 """, unsafe_allow_html=True)
 
-# Titre et description
-st.title("📊 Assistant KPIs et DATA")
-st.markdown("Interrogez votre base de données en langage naturel pour obtenir des réponses sur vos KPIs.")
+# Initialisation de la session
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": "Bonjour ! Je suis votre assistant KPIs et DATA. Comment puis-je vous aider ?"
+    })
 
-# === Chargement et affichage des KPIs de base ===
+# Affichage des messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(f"""
+            <div class="chat-message {message['role']}">
+                {message['content']}
+            </div>
+        """, unsafe_allow_html=True)
 
-if 'kpis_loaded' not in st.session_state:
-    try:
-        total_agents_query = "SELECT COUNT(*) as nombre_agents FROM agents;"
-        total_teams_query = "SELECT COUNT(*) as nombre_equipes FROM teams;"
-        total_sales_query = "SELECT SUM(sales) as total_ventes FROM performances;"
-        avg_satisfaction_query = "SELECT ROUND(AVG(satisfaction_score), 2) as satisfaction_moyenne FROM performances;"
-        
-        total_agents = execute_sql_query(total_agents_query).strip().split('\n')[1]
-        total_teams = execute_sql_query(total_teams_query).strip().split('\n')[1]
-        total_sales = execute_sql_query(total_sales_query).strip().split('\n')[1]
-        avg_satisfaction = execute_sql_query(avg_satisfaction_query).strip().split('\n')[1]
-        
-        st.session_state.total_agents = total_agents
-        st.session_state.total_teams = total_teams
-        st.session_state.total_sales = total_sales
-        st.session_state.avg_satisfaction = avg_satisfaction
-        st.session_state.kpis_loaded = True
-    except Exception as e:
-        st.error(f"Erreur lors du chargement des KPIs: {str(e)}")
-        st.session_state.kpis_loaded = False
-
-if st.session_state.get("kpis_loaded", False):
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f'<div class="metric-card"><div class="metric-value">{st.session_state.total_agents}</div><div class="metric-label">Agents</div></div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown(f'<div class="metric-card"><div class="metric-value">{st.session_state.total_teams}</div><div class="metric-label">Équipes</div></div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown(f'<div class="metric-card"><div class="metric-value">{st.session_state.total_sales}</div><div class="metric-label">Ventes Totales</div></div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown(f'<div class="metric-card"><div class="metric-value">{st.session_state.avg_satisfaction}/5</div><div class="metric-label">Satisfaction Moyenne</div></div>', unsafe_allow_html=True)
-
-# === Barre latérale avec informations sur le schéma et options ===
-
-with st.sidebar:
-    st.header("Informations sur la base de données")
-    schema_info = """
-    Tables:
-    - agents (agent_id, name, position, team_id, work_hours)
-    - attendance (attendance_id, agent_id, date, is_present, tardiness_minutes)
-    - bonuses (bonus_id, agent_id, bonus_amount, reason)
-    - performance_goals (goal_id, agent_id, calls_target, sales_target, appointments_target)
-    - performances (performance_id, agent_id, date, calls_made, sales, appointments, answered_calls, qualified_leads, non_qualified_leads, pending_leads, call_result, satisfaction_score)
-    - teams (team_id, team_name)
-    """
-    with st.expander("Schéma de la base de données", expanded=False):
-        st.code(schema_info, language="sql")
-    st.subheader("Options")
-    show_sql = st.checkbox("Afficher les requêtes SQL", value=True)
-    show_results_as_table = st.checkbox("Afficher les résultats sous forme de tableau", value=True)
-    use_simple_mode = st.checkbox("Mode simplifié (sans API)", value=False, 
-                                  help="Utiliser ce mode en cas de problème de quota avec l'API")
-    use_open_source_mode = st.checkbox("Utiliser modèle open source (via Hugging Face)", value=False,
-                                       help="Utiliser une alternative open source à Gemini")
-    st.subheader("Exemples de questions")
-    st.markdown("""
-    - Combien d'agents avons-nous au total ?
-    - Quels sont les meilleurs agents ?
-    - Montrez-moi les performances des équipes
-    - Quels agents ont le plus de retard ?
-    - Qui a reçu le plus de bonus ?
-    - Quels agents ont atteint leurs objectifs ?
-    - Qui a le meilleur score de satisfaction client ?
-    """)
-    st.markdown("---")
-    st.markdown("### À propos")
-    st.markdown("Cet assistant vous permet d'interroger votre base de données via des questions en langage naturel pour analyser vos KPIs.")
-
-# === Historique du chat ===
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [AIMessage("Bonjour ! Je suis votre assistant KPIs et DATA. Comment puis-je vous aider ?")]
-
-with st.container():
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    for message in st.session_state.chat_history:
-        if isinstance(message, AIMessage):
-            st.chat_message("assistant").markdown(message.content)
-        else:
-            st.chat_message("user").markdown(message.content)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# === Gestion de la requête utilisateur ===
-
-user_query = st.chat_input("Posez votre question sur les KPIs ou les données...")
-if user_query:
-    st.session_state.chat_history.append(HumanMessage(content=user_query))
-    st.chat_message("user").markdown(user_query)
+# Zone de saisie utilisateur
+if prompt := st.chat_input("Posez votre question ici..."):
+    # Ajout du message utilisateur
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
     
+    with st.chat_message("user"):
+        st.markdown(f"""
+            <div class="chat-message user">
+                {prompt}
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Réponse de l'assistant avec animation de réflexion
     with st.chat_message("assistant"):
-        is_simple, type_message = is_greeting_or_small_talk(user_query)
-        if is_simple:
-            response = get_simple_response(type_message)
-            st.markdown(response)
-            st.session_state.chat_history.append(AIMessage(content=response))
-        else:
-            with st.spinner("Analyse de votre question..."):
-                schema = schema_info  # Utilisation du schéma défini dans la sidebar
-                # Génération de la requête SQL (mode API, open source ou mode simple)
-                if use_simple_mode:
-                    sql_query = generate_simple_sql(user_query, schema)
-                elif use_open_source_mode:
-                    sql_prompt = get_sql_prompt(schema, st.session_state.chat_history, user_query)
-                    sql_query = get_open_source_response(sql_prompt)
-                else:
-                    sql_prompt = get_sql_prompt(schema, st.session_state.chat_history, user_query)
-                    sql_query = get_gemini_response(sql_prompt)
-                
-                # Vérification de la validité de la requête générée
-                if (not sql_query or 
-                    "limites de quota" in sql_query.lower() or 
-                    "n'ai pas pu générer" in sql_query.lower() or 
-                    sql_query.startswith("Erreur:")):
-                    fallback_query = generate_simple_sql(user_query, schema)
-                    st.markdown("**Requête SQL générée (mode secours):**")
-                    st.code(fallback_query, language="sql")
-                    sql_query = fallback_query
-                else:
-                    if show_sql:
-                        st.markdown("**Requête SQL générée:**")
-                        st.code(sql_query, language="sql")
-                
-                sql_result = execute_sql_query(sql_query)
-                if show_results_as_table:
-                    df = display_sql_result_as_table(sql_result)
-                    if df is not None and not df.empty:
-                        st.markdown("**Résultats:**")
-                        st.dataframe(df, use_container_width=True)
-                
-                # Génération de la réponse en langage naturel
-                if use_simple_mode:
-                    response = generate_simple_response(user_query, sql_result)
-                elif use_open_source_mode:
-                    nl_prompt = get_nl_response_prompt(schema, user_query, sql_query, sql_result)
-                    response = get_open_source_response(nl_prompt)
-                    if response.startswith("Erreur:"):
-                        response = generate_simple_response(user_query, sql_result)
-                else:
-                    nl_prompt = get_nl_response_prompt(schema, user_query, sql_query, sql_result)
-                    response = get_gemini_response(nl_prompt)
-                    if response.startswith("Erreur:"):
-                        response = generate_simple_response(user_query, sql_result)
-                st.markdown("**Analyse:**")
-                st.markdown(response)
-                st.session_state.chat_history.append(AIMessage(content=response))
+        # Afficher l'animation de réflexion
+        thinking_placeholder = st.empty()
+        thinking_placeholder.markdown("""
+            <div class="thinking">
+                <div class="thinking-dots">
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Traitement de la réponse
+        response = process_user_input(prompt)
+        
+        # Remplacer l'animation par la réponse
+        thinking_placeholder.empty()
+        st.markdown(f"""
+            <div class="chat-message assistant">
+                {response}
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Ajout de la réponse à l'historique
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
+
+# Ajout d'une barre latérale avec des exemples de questions
+with st.sidebar:
+    st.markdown("""
+        <div style='padding: 1rem; background-color: #f8f9fa; border-radius: 0.5rem;'>
+            <h3>💡 Exemples de questions</h3>
+            <ul style='list-style-type: none; padding-left: 0;'>
+                <li style='margin-bottom: 0.5rem;'>• Combien d'agents avons-nous ?</li>
+                <li style='margin-bottom: 0.5rem;'>• Quels sont nos meilleurs agents ?</li>
+                <li style='margin-bottom: 0.5rem;'>• Comment performent nos équipes ?</li>
+                <li style='margin-bottom: 0.5rem;'>• Qui a reçu le plus de bonus ?</li>
+                <li style='margin-bottom: 0.5rem;'>• Quels sont les objectifs des agents ?</li>
+                <li style='margin-bottom: 0.5rem;'>• Qui a le meilleur taux de présence ?</li>
+            </ul>
+        </div>
+    """, unsafe_allow_html=True)

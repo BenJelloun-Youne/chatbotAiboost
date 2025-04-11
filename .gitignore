@@ -1,0 +1,35 @@
+# Environnement virtuel
+venv/
+env/
+.env
+
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Fichiers de configuration
+*.env
+*.config
+
+# Fichiers de base de données
+*.db
+*.sqlite
+*.sqlite3
+
+# Fichiers de cache
+.cache/
+.pytest_cache/
+
+# Fichiers de logs
+*.log
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers d'IDE
+.idea/
+.vscode/
+*.swp
+*.swo 
