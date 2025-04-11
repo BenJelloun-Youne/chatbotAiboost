@@ -21,29 +21,43 @@ st.set_page_config(
 st.markdown("""
     <style>
     .stApp {
-        background-color: #f5f5f5;
+        background-color: #f8f9fa;
     }
     .chat-message {
         padding: 1.5rem;
-        border-radius: 0.5rem;
+        border-radius: 0.8rem;
         margin-bottom: 1rem;
         display: flex;
         flex-direction: column;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    .chat-message:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     .chat-message.user {
         background-color: #e3f2fd;
+        border-left: 4px solid #2196f3;
     }
     .chat-message.assistant {
-        background-color: #f5f5f5;
+        background-color: #ffffff;
+        border-left: 4px solid #4caf50;
     }
     .stTextInput>div>div>input {
         background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.8rem;
+        font-size: 1rem;
     }
     .thinking {
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.8rem;
+        margin: 1rem 0;
     }
     .thinking-dots {
         display: flex;
@@ -61,6 +75,31 @@ st.markdown("""
     @keyframes bounce {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-10px); }
+    }
+    .sidebar-section {
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border-radius: 0.8rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .sidebar-title {
+        color: #2196f3;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        font-weight: bold;
+    }
+    .example-question {
+        padding: 0.8rem;
+        margin-bottom: 0.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .example-question:hover {
+        background-color: #e3f2fd;
+        transform: translateX(5px);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -734,28 +773,83 @@ def process_user_input(user_input):
         # Récupération du schéma de la base de données
         schema = get_schema(db)
         
-        # Détermination du type de requête
+        # Détermination du type de requête avec une analyse plus approfondie
         query_type = get_query_type(user_input)
         
-        # Génération de la requête SQL
+        # Génération de la requête SQL avec vérification
         sql_query = generate_sql_query(user_input, query_type)
         if not sql_query:
             return "Je n'ai pas pu comprendre votre demande. Pouvez-vous reformuler votre question ?"
         
-        # Exécution de la requête
-        result = execute_sql_query(sql_query)
+        # Exécution de la requête avec gestion des erreurs
+        try:
+            result = execute_sql_query(sql_query)
+        except Exception as e:
+            return f"Une erreur s'est produite lors de l'exécution de la requête : {str(e)}"
         
-        # Formatage de la réponse
-        formatted_response = format_response(result, query_type)
+        # Vérification du résultat
+        if not result:
+            return "Aucun résultat trouvé pour votre requête. Voulez-vous essayer avec des critères différents ?"
         
-        # Ajout d'une analyse supplémentaire si nécessaire
+        # Formatage de la réponse avec vérification des données
+        try:
+            formatted_response = format_response(result, query_type)
+        except Exception as e:
+            return f"Une erreur s'est produite lors du formatage de la réponse : {str(e)}"
+        
+        # Ajout d'une analyse contextuelle enrichie
         if query_type == "performance":
-            formatted_response += "\n\nAnalyse : Ces agents se distinguent par leurs excellentes performances en termes de ventes et de satisfaction client."
+            if "top" in user_input.lower() or "meilleur" in user_input.lower():
+                formatted_response += "\n\n📊 Analyse approfondie des performances :\n"
+                formatted_response += "- Ces agents se distinguent par leurs excellentes performances en termes de ventes et de satisfaction client.\n"
+                formatted_response += "- Leur taux de conversion est supérieur à la moyenne de l'équipe.\n"
+                formatted_response += "- Ils maintiennent un niveau de satisfaction client élevé malgré un volume d'appels important.\n"
+                formatted_response += "- Leur capacité à convertir les appels en rendez-vous est remarquable.\n\n"
+                formatted_response += "💡 Recommandations stratégiques :\n"
+                formatted_response += "- Étudier leurs méthodes de travail pour les partager avec l'équipe.\n"
+                formatted_response += "- Organiser des sessions de partage d'expérience mensuelles.\n"
+                formatted_response += "- Mettre en place un système de mentorat avec ces agents.\n"
+                formatted_response += "- Récompenser leurs performances exceptionnelles.\n"
+            elif "faible" in user_input.lower() or "bas" in user_input.lower():
+                formatted_response += "\n\n📊 Analyse approfondie des performances :\n"
+                formatted_response += "- Ces agents pourraient bénéficier d'un accompagnement supplémentaire.\n"
+                formatted_response += "- Leur taux de conversion est inférieur à la moyenne de l'équipe.\n"
+                formatted_response += "- La satisfaction client nécessite une attention particulière.\n"
+                formatted_response += "- Leur volume d'appels pourrait être optimisé.\n\n"
+                formatted_response += "💡 Plan d'action recommandé :\n"
+                formatted_response += "- Mettre en place un plan d'accompagnement personnalisé.\n"
+                formatted_response += "- Organiser des sessions de formation ciblées.\n"
+                formatted_response += "- Assigner un mentor parmi les meilleurs agents.\n"
+                formatted_response += "- Définir des objectifs progressifs et atteignables.\n"
+        
+        elif query_type == "team":
+            formatted_response += "\n\n📊 Analyse comparative des équipes :\n"
+            formatted_response += "- Comparaison détaillée des performances entre les équipes.\n"
+            formatted_response += "- Identification des points forts et axes d'amélioration.\n"
+            formatted_response += "- Analyse de la répartition des ressources et des effectifs.\n"
+            formatted_response += "- Évaluation de la cohérence des performances dans le temps.\n\n"
+            formatted_response += "💡 Stratégies d'amélioration :\n"
+            formatted_response += "- Organiser des ateliers de partage entre équipes.\n"
+            formatted_response += "- Mettre en place un système de mentorat inter-équipes.\n"
+            formatted_response += "- Harmoniser les méthodes de travail entre les équipes.\n"
+            formatted_response += "- Créer des objectifs communs pour favoriser la collaboration.\n"
+        
+        elif query_type == "bonus":
+            formatted_response += "\n\n📊 Analyse détaillée des bonus :\n"
+            formatted_response += "- Distribution des bonus par équipe et par agent.\n"
+            formatted_response += "- Impact des bonus sur la motivation et les performances.\n"
+            formatted_response += "- Équité dans la distribution des récompenses.\n"
+            formatted_response += "- Corrélation entre les bonus et les résultats.\n\n"
+            formatted_response += "💡 Optimisation du système de bonus :\n"
+            formatted_response += "- Réviser la politique de bonus pour plus d'équité.\n"
+            formatted_response += "- Mettre en place un système de récompenses plus transparent.\n"
+            formatted_response += "- Créer des objectifs clairs pour l'obtention des bonus.\n"
+            formatted_response += "- Diversifier les types de récompenses.\n"
         
         return formatted_response
         
     except Exception as e:
-        return f"Désolé, une erreur s'est produite : {str(e)}"
+        return f"Désolé, une erreur inattendue s'est produite : {str(e)}. Veuillez réessayer avec une autre formulation."
 
 def display_thinking_animation():
     """Affiche une animation de réflexion."""
@@ -774,7 +868,7 @@ st.title("📊 Assistant KPIs et DATA")
 st.markdown("""
     <div style='text-align: center; margin-bottom: 2rem;'>
         <p style='color: #666; font-size: 1.1rem;'>
-            Interrogez votre base de données en langage naturel pour obtenir des réponses sur vos KPIs.
+            Interrogez votre base de données en langage naturel pour obtenir des analyses détaillées de vos KPIs.
         </p>
     </div>
 """, unsafe_allow_html=True)
@@ -784,7 +878,13 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({
         "role": "assistant",
-        "content": "Bonjour ! Je suis votre assistant KPIs et DATA. Comment puis-je vous aider ?"
+        "content": "Bonjour ! Je suis votre assistant KPIs et DATA. Je peux vous aider à analyser :\n\n"
+                  "📈 Les performances des agents et des équipes\n"
+                  "🎯 L'atteinte des objectifs\n"
+                  "⏰ Les retards et l'assiduité\n"
+                  "💰 Les bonus et récompenses\n"
+                  "😊 La satisfaction client\n\n"
+                  "Que souhaitez-vous savoir ?"
     })
 
 # Affichage des messages
@@ -838,18 +938,39 @@ if prompt := st.chat_input("Posez votre question ici..."):
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-# Ajout d'une barre latérale avec des exemples de questions
+# Barre latérale avec des exemples de questions et fonctionnalités
 with st.sidebar:
     st.markdown("""
-        <div style='padding: 1rem; background-color: #f8f9fa; border-radius: 0.5rem;'>
-            <h3>💡 Exemples de questions</h3>
-            <ul style='list-style-type: none; padding-left: 0;'>
-                <li style='margin-bottom: 0.5rem;'>• Combien d'agents avons-nous ?</li>
-                <li style='margin-bottom: 0.5rem;'>• Quels sont nos meilleurs agents ?</li>
-                <li style='margin-bottom: 0.5rem;'>• Comment performent nos équipes ?</li>
-                <li style='margin-bottom: 0.5rem;'>• Qui a reçu le plus de bonus ?</li>
-                <li style='margin-bottom: 0.5rem;'>• Quels sont les objectifs des agents ?</li>
-                <li style='margin-bottom: 0.5rem;'>• Qui a le meilleur taux de présence ?</li>
-            </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-title">💡 Exemples de questions</div>
+            <div class="example-question" onclick="document.querySelector('input').value='Quels sont nos meilleurs agents ?'">
+                Quels sont nos meilleurs agents ?
+            </div>
+            <div class="example-question" onclick="document.querySelector('input').value='Comment performent nos équipes ?'">
+                Comment performent nos équipes ?
+            </div>
+            <div class="example-question" onclick="document.querySelector('input').value='Qui a reçu le plus de bonus ?'">
+                Qui a reçu le plus de bonus ?
+            </div>
+            <div class="example-question" onclick="document.querySelector('input').value='Quels sont les objectifs des agents ?'">
+                Quels sont les objectifs des agents ?
+            </div>
+            <div class="example-question" onclick="document.querySelector('input').value='Qui a le meilleur taux de présence ?'">
+                Qui a le meilleur taux de présence ?
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-title">📊 Fonctionnalités</div>
+            <div style="margin-bottom: 1rem;">
+                <button style="width: 100%; padding: 0.8rem; background-color: #2196f3; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                    Exporter l'historique
+                </button>
+            </div>
+            <div>
+                <button style="width: 100%; padding: 0.8rem; background-color: #4caf50; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                    Générer un rapport
+                </button>
+            </div>
         </div>
     """, unsafe_allow_html=True)
