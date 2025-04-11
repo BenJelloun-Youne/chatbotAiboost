@@ -7,12 +7,7 @@ import re
 import time
 import random
 from datetime import datetime
-from dotenv import load_dotenv
-import os
 import streamlit.components.v1 as components
-
-# Chargement des variables d'environnement
-load_dotenv()
 
 # Configuration de la page
 st.set_page_config(
@@ -72,10 +67,9 @@ st.markdown("""
 
 # === Configuration API et base de données ===
 try:
-    # Configurez votre API OpenAI de manière sécurisée
-    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    if not os.getenv('OPENAI_API_KEY'):
-        st.error("Erreur : La clé API OpenAI n'est pas configurée. Veuillez vérifier le fichier .env")
+    # Configuration directe de l'API OpenAI
+    OPENAI_API_KEY = "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"
+    client = OpenAI(api_key=OPENAI_API_KEY)
 except Exception as e:
     st.error(f"Erreur lors de l'initialisation de l'API OpenAI : {str(e)}")
 
