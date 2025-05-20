@@ -11,193 +11,198 @@ import streamlit.components.v1 as components
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Assistant KPIs et DATA",
+    page_title="Assistant KPIs",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Style CSS personnalisé
+# CSS personnalisé
 st.markdown("""
     <style>
-    /* Style général de l'application */
-    .stApp {
-        background-color: #f8f9fa;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Style des messages de chat */
-    .chat-message {
-        padding: 1.5rem;
-        border-radius: 1rem;
-        margin-bottom: 1.2rem;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
-        max-width: 85%;
-    }
-    
-    .chat-message:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    }
-    
-    .chat-message.user {
-        background-color: #e3f2fd;
-        border-left: 5px solid #2196f3;
-        margin-left: auto;
-    }
-    
-    .chat-message.assistant {
-        background-color: #ffffff;
-        border-left: 5px solid #4caf50;
-        margin-right: auto;
-    }
-    
-    /* Style de la zone de saisie */
-    .stTextInput>div>div>input {
-        background-color: white;
-        border-radius: 1rem;
-        padding: 1rem;
-        font-size: 1.1rem;
-        border: 2px solid #e0e0e0;
-        transition: all 0.3s ease;
-    }
-    
-    .stTextInput>div>div>input:focus {
-        border-color: #2196f3;
-        box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-    }
-    
-    /* Animation de réflexion */
-    .thinking {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 1rem;
-        margin: 1.2rem 0;
-    }
-    
-    .thinking-dots {
-        display: flex;
-        gap: 0.8rem;
-    }
-    
-    .thinking-dot {
-        width: 10px;
-        height: 10px;
-        background-color: #2196f3;
-        border-radius: 50%;
-        animation: bounce 1.4s infinite ease-in-out;
-    }
-    
-    .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
-    .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
-    
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-12px); }
-    }
-    
-    /* Style de la barre latérale */
-    .sidebar-section {
-        background-color: #ffffff;
-        padding: 1.8rem;
-        border-radius: 1rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    
-    .sidebar-title {
-        color: #2196f3;
-        font-size: 1.3rem;
-        margin-bottom: 1.2rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    /* Style des exemples de questions */
-    .example-question {
-        padding: 1rem;
-        margin-bottom: 0.8rem;
-        background-color: #f8f9fa;
-        border-radius: 0.8rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: 1px solid #e0e0e0;
-    }
-    
-    .example-question:hover {
-        background-color: #e3f2fd;
-        transform: translateX(8px);
-        border-color: #2196f3;
-    }
-    
-    /* Style des boutons */
-    .stButton>button {
-        width: 100%;
-        padding: 1rem;
-        background-color: #2196f3;
-        color: white;
-        border: none;
-        border-radius: 0.8rem;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        margin-bottom: 1rem;
-    }
-    
-    .stButton>button:hover {
-        background-color: #1976d2;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    
-    /* Style du titre principal */
-    .main-title {
-        font-size: 2.5rem;
-        color: #1976d2;
-        margin-bottom: 1rem;
-        text-align: center;
-        font-weight: 700;
-    }
-    
-    /* Style du sous-titre */
-    .subtitle {
-        color: #666;
-        font-size: 1.2rem;
-        text-align: center;
-        margin-bottom: 2rem;
-        line-height: 1.6;
-    }
-    
-    /* Style des cartes de statistiques */
-    .stat-card {
-        background-color: white;
-        padding: 1.5rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 1rem;
-    }
-    
-    .stat-title {
-        color: #666;
-        font-size: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .stat-value {
-        color: #1976d2;
-        font-size: 1.8rem;
-        font-weight: 600;
-    }
+        /* Style général */
+        .stApp {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        /* Style des messages de chat */
+        .chat-message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .chat-message:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .chat-message.user {
+            background-color: #2d2d2d;
+            border-left: 4px solid #007acc;
+        }
+        
+        .chat-message.assistant {
+            background-color: #252526;
+            border-left: 4px solid #4ec9b0;
+        }
+        
+        .timestamp {
+            color: #858585;
+            font-size: 0.8rem;
+        }
+        
+        /* Style de la barre latérale */
+        .sidebar-section {
+            background-color: #252526;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .sidebar-title {
+            color: #d4d4d4;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #3c3c3c;
+        }
+        
+        /* Style des statistiques */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            background-color: #2d2d2d;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        
+        .stat-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007acc;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #858585;
+            font-size: 0.9rem;
+        }
+        
+        /* Style des questions d'exemple */
+        .question-category {
+            margin-bottom: 1rem;
+        }
+        
+        .question-item {
+            background-color: #2d2d2d;
+            padding: 0.8rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .question-item:hover {
+            background-color: #3c3c3c;
+            transform: translateX(5px);
+        }
+        
+        /* Style des boutons */
+        .action-button, .tool-button {
+            background-color: #2d2d2d;
+            color: #d4d4d4;
+            border: 1px solid #3c3c3c;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .action-button:hover, .tool-button:hover {
+            background-color: #3c3c3c;
+            border-color: #007acc;
+        }
+        
+        /* Style de l'input */
+        .stChatInput input {
+            background-color: #2d2d2d !important;
+            color: #d4d4d4 !important;
+            border: 1px solid #3c3c3c !important;
+            border-radius: 0.5rem !important;
+            padding: 1rem !important;
+        }
+        
+        .stChatInput input:focus {
+            border-color: #007acc !important;
+            box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2) !important;
+        }
+        
+        /* Animation de réflexion */
+        .thinking {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        
+        .thinking-dots {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .thinking-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #007acc;
+            border-radius: 50%;
+            animation: thinking 1.4s infinite ease-in-out;
+        }
+        
+        .thinking-dot:nth-child(1) { animation-delay: 0s; }
+        .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes thinking {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Titres */
+        .main-title {
+            color: #007acc;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #858585;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
+# Titre de l'application
+st.markdown("""
+    <h1 class="main-title">Assistant KPIs</h1>
+    <p class="subtitle">Analysez vos données de performance en temps réel</p>
+""", unsafe_allow_html=True)
 
 # === Configuration API et base de données ===
 try:
@@ -959,7 +964,7 @@ def display_thinking_animation():
     """, unsafe_allow_html=True)
 
 # === Configuration de l'interface Streamlit ===
-st.markdown('<h1 class="main-title">📊 Assistant KPIs et DATA</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">📊 Assistant KPIs</h1>', unsafe_allow_html=True)
 st.markdown("""
     <div class="subtitle">
         Interrogez votre base de données en langage naturel pour obtenir des analyses détaillées de vos KPIs.
@@ -972,7 +977,7 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({
         "role": "assistant",
-        "content": "Bonjour ! Je suis votre assistant KPIs et DATA. Je peux vous aider à analyser :\n\n"
+        "content": "Bonjour ! Je suis votre assistant KPIs. Je peux vous aider à analyser :\n\n"
                   "📈 Les performances des agents et des équipes\n"
                   "🎯 L'atteinte des objectifs\n"
                   "⏰ Les retards et l'assiduité\n"
@@ -992,10 +997,10 @@ for message in st.session_state.messages:
             st.markdown(f"""
                 <div class="chat-message user">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <strong>Vous</strong>
-                        <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                        <strong style="color: #007acc;">Vous</strong>
+                        <span class="timestamp">{timestamp}</span>
                     </div>
-                    <div style="line-height: 1.6;">
+                    <div style="line-height: 1.6; color: #d4d4d4;">
                         {message['content']}
                     </div>
                 </div>
@@ -1005,18 +1010,18 @@ for message in st.session_state.messages:
             st.markdown(f"""
                 <div class="chat-message assistant">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <strong>Assistant KPIs</strong>
-                        <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                        <strong style="color: #4ec9b0;">Assistant KPIs</strong>
+                        <span class="timestamp">{timestamp}</span>
                     </div>
-                    <div style="line-height: 1.6;">
+                    <div style="line-height: 1.6; color: #d4d4d4;">
                         {message['content']}
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button style="padding: 0.5rem 1rem; background-color: #e3f2fd; color: #1976d2; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
-                            📊 Voir les détails
+                        <button class="action-button">
+                            <span style="color: #007acc;">📊</span> Voir les détails
                         </button>
-                        <button style="padding: 0.5rem 1rem; background-color: #e8f5e9; color: #2e7d32; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
-                            📥 Exporter
+                        <button class="action-button">
+                            <span style="color: #4ec9b0;">📥</span> Exporter
                         </button>
                     </div>
                 </div>
@@ -1033,10 +1038,10 @@ if prompt := st.chat_input("Posez votre question ici... (ex: 'Quels sont nos mei
         st.markdown(f"""
             <div class="chat-message user">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <strong>Vous</strong>
-                    <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                    <strong style="color: #007acc;">Vous</strong>
+                    <span class="timestamp">{timestamp}</span>
                 </div>
-                <div style="line-height: 1.6;">
+                <div style="line-height: 1.6; color: #d4d4d4;">
                     {prompt}
                 </div>
             </div>
@@ -1065,18 +1070,18 @@ if prompt := st.chat_input("Posez votre question ici... (ex: 'Quels sont nos mei
         st.markdown(f"""
             <div class="chat-message assistant">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <strong>Assistant KPIs</strong>
-                    <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                    <strong style="color: #4ec9b0;">Assistant KPIs</strong>
+                    <span class="timestamp">{timestamp}</span>
                 </div>
-                <div style="line-height: 1.6;">
+                <div style="line-height: 1.6; color: #d4d4d4;">
                     {response}
                 </div>
                 <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button style="padding: 0.5rem 1rem; background-color: #e3f2fd; color: #1976d2; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
-                        📊 Voir les détails
+                    <button class="action-button">
+                        <span style="color: #007acc;">📊</span> Voir les détails
                     </button>
-                    <button style="padding: 0.5rem 1rem; background-color: #e8f5e9; color: #2e7d32; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
-                        📥 Exporter
+                    <button class="action-button">
+                        <span style="color: #4ec9b0;">📥</span> Exporter
                     </button>
                 </div>
             </div>
@@ -1086,82 +1091,78 @@ if prompt := st.chat_input("Posez votre question ici... (ex: 'Quels sont nos mei
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-# Barre latérale avec des exemples de questions et fonctionnalités
+# Barre latérale
 with st.sidebar:
     st.markdown("""
         <div class="sidebar-section">
-            <div class="sidebar-title">
-                <span>💡 Exemples de questions</span>
-            </div>
-            <div class="example-question" onclick="document.querySelector('input').value='Quels sont nos meilleurs agents ?'">
-                <strong>📈 Performance</strong><br>
-                Quels sont nos meilleurs agents ?
-            </div>
-            <div class="example-question" onclick="document.querySelector('input').value='Comment performent nos équipes ?'">
-                <strong>👥 Équipes</strong><br>
-                Comment performent nos équipes ?
-            </div>
-            <div class="example-question" onclick="document.querySelector('input').value='Qui a reçu le plus de bonus ?'">
-                <strong>💰 Bonus</strong><br>
-                Qui a reçu le plus de bonus ?
-            </div>
-            <div class="example-question" onclick="document.querySelector('input').value='Quels sont les objectifs des agents ?'">
-                <strong>🎯 Objectifs</strong><br>
-                Quels sont les objectifs des agents ?
-            </div>
-            <div class="example-question" onclick="document.querySelector('input').value='Qui a le meilleur taux de présence ?'">
-                <strong>⏰ Présence</strong><br>
-                Qui a le meilleur taux de présence ?
+            <h3 class="sidebar-title"><span>📊 Statistiques Rapides</span></h3>
+            <div class="stats-container">
+                <div class="stat-item">
+                    <span class="stat-value">42</span>
+                    <span class="stat-label">Agents Actifs</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">5</span>
+                    <span class="stat-label">Équipes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">4.2/5</span>
+                    <span class="stat-label">Satisfaction</span>
+                </div>
             </div>
         </div>
         
         <div class="sidebar-section">
-            <div class="sidebar-title">
-                <span>📊 Statistiques rapides</span>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Agents actifs</div>
-                <div class="stat-value">42</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Équipes</div>
-                <div class="stat-value">5</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Satisfaction moyenne</div>
-                <div class="stat-value">4.2/5</div>
+            <h3 class="sidebar-title"><span>💡 Exemples de Questions</span></h3>
+            <div class="example-questions">
+                <div class="question-category">
+                    <h4 style="color: #007acc; margin-bottom: 0.5rem;">Performance</h4>
+                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Quels sont nos meilleurs agents ?'">
+                        Quels sont nos meilleurs agents ?
+                    </div>
+                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Comment évolue la performance moyenne ?'">
+                        Comment évolue la performance moyenne ?
+                    </div>
+                </div>
+                
+                <div class="question-category">
+                    <h4 style="color: #4ec9b0; margin-bottom: 0.5rem;">Équipes</h4>
+                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Quelle équipe a la meilleure performance ?'">
+                        Quelle équipe a la meilleure performance ?
+                    </div>
+                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Comparer les performances des équipes'">
+                        Comparer les performances des équipes
+                    </div>
+                </div>
             </div>
         </div>
         
         <div class="sidebar-section">
-            <div class="sidebar-title">
-                <span>🛠️ Outils</span>
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <button style="width: 100%; padding: 1rem; background-color: #2196f3; color: white; border: none; border-radius: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span>📥</span> Exporter l'historique
+            <h3 class="sidebar-title"><span>🛠️ Outils</span></h3>
+            <div class="tools-container">
+                <button class="tool-button">
+                    <span style="color: #007acc;">📥</span> Exporter l'historique
                 </button>
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <button style="width: 100%; padding: 1rem; background-color: #4caf50; color: white; border: none; border-radius: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span>📊</span> Générer un rapport
+                <button class="tool-button">
+                    <span style="color: #4ec9b0;">📊</span> Générer un rapport
                 </button>
-            </div>
-            <div>
-                <button style="width: 100%; padding: 1rem; background-color: #ff9800; color: white; border: none; border-radius: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span>⚙️</span> Paramètres
+                <button class="tool-button">
+                    <span style="color: #dcdcaa;">⚙️</span> Paramètres
                 </button>
             </div>
         </div>
         
         <div class="sidebar-section">
-            <div class="sidebar-title">
-                <span>ℹ️ Aide</span>
-            </div>
-            <div style="color: #666; font-size: 0.9rem; line-height: 1.5;">
-                <p>💡 <strong>Conseil :</strong> Posez des questions précises pour obtenir des réponses détaillées.</p>
-                <p>📝 <strong>Exemple :</strong> "Quels sont les 3 meilleurs agents en termes de ventes ce mois-ci ?"</p>
-                <p>🔍 <strong>Astuce :</strong> Vous pouvez combiner plusieurs critères dans votre question.</p>
+            <h3 class="sidebar-title"><span>❓ Aide</span></h3>
+            <div class="help-content">
+                <p style="color: #d4d4d4; font-size: 0.9rem; margin-bottom: 1rem;">
+                    Pour obtenir les meilleures réponses :
+                </p>
+                <ul style="color: #d4d4d4; font-size: 0.9rem; padding-left: 1.5rem;">
+                    <li>Soyez précis dans vos questions</li>
+                    <li>Utilisez des critères spécifiques</li>
+                    <li>Combinez plusieurs filtres</li>
+                </ul>
             </div>
         </div>
     """, unsafe_allow_html=True)
