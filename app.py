@@ -20,86 +20,181 @@ st.set_page_config(
 # Style CSS personnalisé
 st.markdown("""
     <style>
+    /* Style général de l'application */
     .stApp {
         background-color: #f8f9fa;
+        font-family: 'Inter', sans-serif;
     }
+    
+    /* Style des messages de chat */
     .chat-message {
         padding: 1.5rem;
-        border-radius: 0.8rem;
-        margin-bottom: 1rem;
+        border-radius: 1rem;
+        margin-bottom: 1.2rem;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         transition: all 0.3s ease;
+        max-width: 85%;
     }
+    
     .chat-message:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
+    
     .chat-message.user {
         background-color: #e3f2fd;
-        border-left: 4px solid #2196f3;
+        border-left: 5px solid #2196f3;
+        margin-left: auto;
     }
+    
     .chat-message.assistant {
         background-color: #ffffff;
-        border-left: 4px solid #4caf50;
+        border-left: 5px solid #4caf50;
+        margin-right: auto;
     }
+    
+    /* Style de la zone de saisie */
     .stTextInput>div>div>input {
         background-color: white;
-        border-radius: 0.5rem;
-        padding: 0.8rem;
-        font-size: 1rem;
+        border-radius: 1rem;
+        padding: 1rem;
+        font-size: 1.1rem;
+        border: 2px solid #e0e0e0;
+        transition: all 0.3s ease;
     }
+    
+    .stTextInput>div>div>input:focus {
+        border-color: #2196f3;
+        box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+    }
+    
+    /* Animation de réflexion */
     .thinking {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 1rem;
+        padding: 1.5rem;
         background-color: #f8f9fa;
-        border-radius: 0.8rem;
-        margin: 1rem 0;
+        border-radius: 1rem;
+        margin: 1.2rem 0;
     }
+    
     .thinking-dots {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.8rem;
     }
+    
     .thinking-dot {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         background-color: #2196f3;
         border-radius: 50%;
         animation: bounce 1.4s infinite ease-in-out;
     }
+    
     .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
     .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+    
     @keyframes bounce {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
+        50% { transform: translateY(-12px); }
     }
+    
+    /* Style de la barre latérale */
     .sidebar-section {
         background-color: #ffffff;
-        padding: 1.5rem;
-        border-radius: 0.8rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1.8rem;
+        border-radius: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
+    
     .sidebar-title {
         color: #2196f3;
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-        font-weight: bold;
+        font-size: 1.3rem;
+        margin-bottom: 1.2rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
+    
+    /* Style des exemples de questions */
     .example-question {
-        padding: 0.8rem;
-        margin-bottom: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 0.8rem;
         background-color: #f8f9fa;
-        border-radius: 0.5rem;
+        border-radius: 0.8rem;
         cursor: pointer;
         transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
     }
+    
     .example-question:hover {
         background-color: #e3f2fd;
-        transform: translateX(5px);
+        transform: translateX(8px);
+        border-color: #2196f3;
+    }
+    
+    /* Style des boutons */
+    .stButton>button {
+        width: 100%;
+        padding: 1rem;
+        background-color: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 0.8rem;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        margin-bottom: 1rem;
+    }
+    
+    .stButton>button:hover {
+        background-color: #1976d2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Style du titre principal */
+    .main-title {
+        font-size: 2.5rem;
+        color: #1976d2;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 700;
+    }
+    
+    /* Style du sous-titre */
+    .subtitle {
+        color: #666;
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+    
+    /* Style des cartes de statistiques */
+    .stat-card {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+    }
+    
+    .stat-title {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-value {
+        color: #1976d2;
+        font-size: 1.8rem;
+        font-weight: 600;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -864,12 +959,11 @@ def display_thinking_animation():
     """, unsafe_allow_html=True)
 
 # === Configuration de l'interface Streamlit ===
-st.title("📊 Assistant KPIs et DATA")
+st.markdown('<h1 class="main-title">📊 Assistant KPIs et DATA</h1>', unsafe_allow_html=True)
 st.markdown("""
-    <div style='text-align: center; margin-bottom: 2rem;'>
-        <p style='color: #666; font-size: 1.1rem;'>
-            Interrogez votre base de données en langage naturel pour obtenir des analyses détaillées de vos KPIs.
-        </p>
+    <div class="subtitle">
+        Interrogez votre base de données en langage naturel pour obtenir des analyses détaillées de vos KPIs.
+        Notre assistant intelligent vous aide à comprendre vos données et à prendre des décisions éclairées.
     </div>
 """, unsafe_allow_html=True)
 
@@ -890,22 +984,61 @@ if 'messages' not in st.session_state:
 # Affichage des messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(f"""
-            <div class="chat-message {message['role']}">
-                {message['content']}
-            </div>
-        """, unsafe_allow_html=True)
+        # Ajout d'un timestamp pour chaque message
+        timestamp = datetime.now().strftime("%H:%M")
+        
+        # Style différent selon le type de message
+        if message["role"] == "user":
+            st.markdown(f"""
+                <div class="chat-message user">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong>Vous</strong>
+                        <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                    </div>
+                    <div style="line-height: 1.6;">
+                        {message['content']}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Pour les messages de l'assistant, ajout de boutons d'action
+            st.markdown(f"""
+                <div class="chat-message assistant">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong>Assistant KPIs</strong>
+                        <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                    </div>
+                    <div style="line-height: 1.6;">
+                        {message['content']}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button style="padding: 0.5rem 1rem; background-color: #e3f2fd; color: #1976d2; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                            📊 Voir les détails
+                        </button>
+                        <button style="padding: 0.5rem 1rem; background-color: #e8f5e9; color: #2e7d32; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                            📥 Exporter
+                        </button>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
-# Zone de saisie utilisateur
-if prompt := st.chat_input("Posez votre question ici..."):
+# Zone de saisie utilisateur avec placeholder amélioré
+if prompt := st.chat_input("Posez votre question ici... (ex: 'Quels sont nos meilleurs agents ?')"):
     # Ajout du message utilisateur
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.session_state.chat_history.append({"role": "user", "content": prompt})
     
     with st.chat_message("user"):
+        timestamp = datetime.now().strftime("%H:%M")
         st.markdown(f"""
             <div class="chat-message user">
-                {prompt}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <strong>Vous</strong>
+                    <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                </div>
+                <div style="line-height: 1.6;">
+                    {prompt}
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -928,9 +1061,24 @@ if prompt := st.chat_input("Posez votre question ici..."):
         
         # Remplacer l'animation par la réponse
         thinking_placeholder.empty()
+        timestamp = datetime.now().strftime("%H:%M")
         st.markdown(f"""
             <div class="chat-message assistant">
-                {response}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <strong>Assistant KPIs</strong>
+                    <span style="color: #666; font-size: 0.8rem;">{timestamp}</span>
+                </div>
+                <div style="line-height: 1.6;">
+                    {response}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button style="padding: 0.5rem 1rem; background-color: #e3f2fd; color: #1976d2; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                        📊 Voir les détails
+                    </button>
+                    <button style="padding: 0.5rem 1rem; background-color: #e8f5e9; color: #2e7d32; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                        📥 Exporter
+                    </button>
+                </div>
             </div>
         """, unsafe_allow_html=True)
         
@@ -942,35 +1090,78 @@ if prompt := st.chat_input("Posez votre question ici..."):
 with st.sidebar:
     st.markdown("""
         <div class="sidebar-section">
-            <div class="sidebar-title">💡 Exemples de questions</div>
+            <div class="sidebar-title">
+                <span>💡 Exemples de questions</span>
+            </div>
             <div class="example-question" onclick="document.querySelector('input').value='Quels sont nos meilleurs agents ?'">
+                <strong>📈 Performance</strong><br>
                 Quels sont nos meilleurs agents ?
             </div>
             <div class="example-question" onclick="document.querySelector('input').value='Comment performent nos équipes ?'">
+                <strong>👥 Équipes</strong><br>
                 Comment performent nos équipes ?
             </div>
             <div class="example-question" onclick="document.querySelector('input').value='Qui a reçu le plus de bonus ?'">
+                <strong>💰 Bonus</strong><br>
                 Qui a reçu le plus de bonus ?
             </div>
             <div class="example-question" onclick="document.querySelector('input').value='Quels sont les objectifs des agents ?'">
+                <strong>🎯 Objectifs</strong><br>
                 Quels sont les objectifs des agents ?
             </div>
             <div class="example-question" onclick="document.querySelector('input').value='Qui a le meilleur taux de présence ?'">
+                <strong>⏰ Présence</strong><br>
                 Qui a le meilleur taux de présence ?
             </div>
         </div>
         
         <div class="sidebar-section">
-            <div class="sidebar-title">📊 Fonctionnalités</div>
+            <div class="sidebar-title">
+                <span>📊 Statistiques rapides</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Agents actifs</div>
+                <div class="stat-value">42</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Équipes</div>
+                <div class="stat-value">5</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Satisfaction moyenne</div>
+                <div class="stat-value">4.2/5</div>
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-title">
+                <span>🛠️ Outils</span>
+            </div>
             <div style="margin-bottom: 1rem;">
-                <button style="width: 100%; padding: 0.8rem; background-color: #2196f3; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
-                    Exporter l'historique
+                <button style="width: 100%; padding: 1rem; background-color: #2196f3; color: white; border: none; border-radius: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span>📥</span> Exporter l'historique
+                </button>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <button style="width: 100%; padding: 1rem; background-color: #4caf50; color: white; border: none; border-radius: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span>📊</span> Générer un rapport
                 </button>
             </div>
             <div>
-                <button style="width: 100%; padding: 0.8rem; background-color: #4caf50; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
-                    Générer un rapport
+                <button style="width: 100%; padding: 1rem; background-color: #ff9800; color: white; border: none; border-radius: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span>⚙️</span> Paramètres
                 </button>
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-title">
+                <span>ℹ️ Aide</span>
+            </div>
+            <div style="color: #666; font-size: 0.9rem; line-height: 1.5;">
+                <p>💡 <strong>Conseil :</strong> Posez des questions précises pour obtenir des réponses détaillées.</p>
+                <p>📝 <strong>Exemple :</strong> "Quels sont les 3 meilleurs agents en termes de ventes ce mois-ci ?"</p>
+                <p>🔍 <strong>Astuce :</strong> Vous pouvez combiner plusieurs critères dans votre question.</p>
             </div>
         </div>
     """, unsafe_allow_html=True)
