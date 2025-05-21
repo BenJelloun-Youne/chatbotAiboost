@@ -1144,76 +1144,26 @@ if prompt := st.chat_input("Posez votre question ici... (ex: 'Quels sont nos mei
 
 # Barre latérale
 with st.sidebar:
-    st.markdown("""
-        <div class="sidebar-section">
-            <h3 class="sidebar-title"><span>📊 Statistiques Rapides</span></h3>
-            <div class="stats-container">
-                <div class="stat-item">
-                    <span class="stat-value">42</span>
-                    <span class="stat-label">Agents Actifs</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">5</span>
-                    <span class="stat-label">Équipes</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">4.2/5</span>
-                    <span class="stat-label">Satisfaction</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="sidebar-section">
-            <h3 class="sidebar-title"><span>💡 Exemples de Questions</span></h3>
-            <div class="example-questions">
-                <div class="question-category">
-                    <h4 style="color: #007acc; margin-bottom: 0.5rem;">Performance</h4>
-                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Quels sont nos meilleurs agents ?'">
-                        Quels sont nos meilleurs agents ?
-                    </div>
-                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Comment évolue la performance moyenne ?'">
-                        Comment évolue la performance moyenne ?
-                    </div>
-                </div>
-                
-                <div class="question-category">
-                    <h4 style="color: #4ec9b0; margin-bottom: 0.5rem;">Équipes</h4>
-                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Quelle équipe a la meilleure performance ?'">
-                        Quelle équipe a la meilleure performance ?
-                    </div>
-                    <div class="question-item" onclick="document.querySelector('.stChatInput input').value = 'Comparer les performances des équipes'">
-                        Comparer les performances des équipes
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="sidebar-section">
-            <h3 class="sidebar-title"><span>🛠️ Outils</span></h3>
-            <div class="tools-container">
-                <button class="tool-button">
-                    <span style="color: #007acc;">📥</span> Exporter l'historique
-                </button>
-                <button class="tool-button">
-                    <span style="color: #4ec9b0;">📊</span> Générer un rapport
-                </button>
-                <button class="tool-button">
-                    <span style="color: #dcdcaa;">⚙️</span> Paramètres
-                </button>
-            </div>
-        </div>
-        
-        <div class="sidebar-section">
-            <h3 class="sidebar-title"><span>❓ Aide</span></h3>
-            <div class="help-content">
-                <p style="color: #d4d4d4; font-size: 0.9rem; margin-bottom: 1rem;">
-                    Pour obtenir les meilleures réponses :
-                </p>
-                <ul style="color: #d4d4d4; font-size: 0.9rem; padding-left: 1.5rem;">
-                    <li>Soyez précis dans vos questions</li>
-                    <li>Utilisez des critères spécifiques</li>
-                    <li>Combinez plusieurs filtres</li>
-                </ul>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.title("📊 Statistiques")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Agents", "42")
+    col2.metric("Équipes", "5")
+    col3.metric("Satisfaction", "4.2/5")
+    st.markdown("---")
+    st.subheader("💡 Exemples")
+    ex_q = st.radio("Questions rapides :", [
+        "Quels sont nos meilleurs agents ?",
+        "Comment évolue la performance moyenne ?",
+        "Quelle équipe a la meilleure performance ?",
+        "Comparer les performances des équipes"
+    ], key="ex_q_radio")
+    if st.button("Utiliser cette question"):
+        st.session_state.prompt = ex_q
+    st.markdown("---")
+    st.subheader("🛠️ Outils")
+    st.button("Exporter l'historique")
+    st.button("Générer un rapport")
+    st.button("Paramètres")
+    st.markdown("---")
+    st.subheader("❓ Aide")
+    st.info("Posez des questions précises pour des réponses pertinentes.")
