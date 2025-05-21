@@ -1,8 +1,6 @@
 streamlit
 openai
-langchain
-langchain-community
-langchain-core
 pandas
-python-dotenv
-SQLAlchemy
+langchain
+sqlalchemy
+langchain_community
