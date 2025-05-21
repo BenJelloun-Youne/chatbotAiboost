@@ -1284,14 +1284,14 @@ if 'messages' not in st.session_state:
 # ========================
 for msg in st.session_state.messages:
     if msg["role"] == "user":
-        st.markdown(f'<div class="user-bubble">{msg["content"]}<div class="timestamp">{msg["time"]}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="user-bubble">{msg["content"]}<div class="timestamp">{msg.get("time", "")}</div></div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="assistant-bubble">{msg["content"]}<div class="timestamp">{msg["time"]}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="assistant-bubble">{msg["content"]}<div class="timestamp">{msg.get("time", "")}</div></div>', unsafe_allow_html=True)
         col1, col2 = st.columns([1,1])
         with col1:
-            st.button("Voir les détails", key=f"details_{msg['time']}")
+            st.button("Voir les détails", key=f"details_{msg.get('time', '')}")
         with col2:
-            st.button("Exporter", key=f"export_{msg['time']}")
+            st.button("Exporter", key=f"export_{msg.get('time', '')}")
 
 # ========================
 # ZONE DE SAISIE UTILISATEUR
