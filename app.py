@@ -16,6 +16,57 @@ st.set_page_config(
     layout="wide"
 )
 
+# Thème sombre Streamlit (optionnel, dépend de la config utilisateur)
+st.markdown("""
+    <style>
+        .stApp { background-color: #1e1e1e; color: #d4d4d4; }
+        .css-1v0mbdj, .css-1d391kg { background: #252526 !important; }
+        .stTextInput>div>div>input {
+            background-color: #2d2d2d;
+            color: #d4d4d4;
+            border: 1px solid #3c3c3c;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .stTextInput>div>div>input:focus {
+            border-color: #007acc;
+            box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+        }
+        .stButton>button {
+            background-color: #2d2d2d;
+            color: #d4d4d4;
+            border: 1px solid #3c3c3c;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s;
+        }
+        .stButton>button:hover {
+            background-color: #3c3c3c;
+            border-color: #007acc;
+        }
+        .user-msg {
+            background: #2d2d2d;
+            border-left: 4px solid #007acc;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .assistant-msg {
+            background: #252526;
+            border-left: 4px solid #4ec9b0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .timestamp {
+            color: #858585;
+            font-size: 0.8rem;
+            float: right;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # CSS personnalisé
 st.markdown("""
     <style>
