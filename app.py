@@ -9,6 +9,8 @@ import random
 from datetime import datetime
 import streamlit.components.v1 as components
 import os
+import sqlite3
+import openai
 
 # Configuration de la page
 st.set_page_config(
@@ -1194,7 +1196,19 @@ with st.sidebar:
     ]
     for ex in examples:
         if st.button(ex, key=f"ex_{ex}"):
-            st.session_state["prompt"] = ex
+            if 'messages' not in st.session_state:
+                st.session_state.messages = []
+            st.session_state.messages.append({"role": "user", "content": ex, "time": datetime.now().strftime("%H:%M")})
+            response = None
+            try:
+                response = st.session_state.get('openai_response', None)
+            except Exception:
+                pass
+            if not response:
+                response = "[Réponse IA ou BDD à venir]"
+            st.session_state.messages.append({"role": "assistant", "content": response, "time": datetime.now().strftime("%H:%M")})
+            st.session_state.prompt = ""
+            st.experimental_rerun()
     st.markdown("---")
     st.subheader("🛠️ Outils")
     st.button("Exporter l'historique")
@@ -1203,3 +1217,100 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("❓ Aide")
     st.info("Posez des questions précises pour des réponses pertinentes. Utilisez des critères spécifiques. Combinez plusieurs filtres.")
+
+# ========================
+# CONNEXION BDD (SQLite)
+# ========================
+def get_db_connection():
+    try:
+        conn = sqlite3.connect("call_center_full_extended.db")
+        return conn
+    except Exception as e:
+        return None
+
+# ========================
+# LOGIQUE IA + BDD
+# ========================
+def ask_openai(prompt, api_key):
+    try:
+        openai.api_key = api_key
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": "Tu es un assistant expert en analyse de données business et KPIs."},
+                      {"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=500
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Erreur OpenAI : {e}"
+
+def kpi_sql_response(question, conn):
+    # Ici, tu peux faire du NLP ou du matching pour générer une requête SQL selon la question
+    # Exemple simple :
+    q = question.lower()
+    if "meilleurs agents" in q:
+        sql = "SELECT name, team_id, SUM(sales) as ventes FROM performances JOIN agents ON performances.agent_id = agents.agent_id GROUP BY performances.agent_id ORDER BY ventes DESC LIMIT 3;"
+    elif "performance moyenne" in q:
+        sql = "SELECT ROUND(AVG(sales),2) as moyenne_ventes, ROUND(AVG(satisfaction_score),2) as satisfaction FROM performances;"
+    elif "meilleure performance" in q and "équipe" in q:
+        sql = "SELECT team_id, SUM(sales) as ventes, ROUND(AVG(satisfaction_score),2) as satisfaction FROM performances GROUP BY team_id ORDER BY ventes DESC LIMIT 1;"
+    elif "comparer les performances des équipes" in q:
+        sql = "SELECT team_id, SUM(sales) as ventes, ROUND(AVG(satisfaction_score),2) as satisfaction FROM performances GROUP BY team_id ORDER BY ventes DESC;"
+    else:
+        return None, None
+    try:
+        df = None
+        if conn:
+            df = conn.execute(sql).fetchall()
+        return sql, df
+    except Exception as e:
+        return sql, f"Erreur SQL : {e}"
+
+# ========================
+# MAIN : TITRE ET SOUS-TITRE
+# ========================
+st.markdown("<h1 style='color:#007acc;'>Assistant KPIs</h1>", unsafe_allow_html=True)
+st.caption("Analysez vos données de performance en temps réel. Posez vos questions en langage naturel.")
+
+# ========================
+# INITIALISATION DE L'HISTORIQUE
+# ========================
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
+# ========================
+# AFFICHAGE DU CHAT (BULLES)
+# ========================
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f'<div class="user-bubble">{msg["content"]}<div class="timestamp">{msg["time"]}</div></div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="assistant-bubble">{msg["content"]}<div class="timestamp">{msg["time"]}</div></div>', unsafe_allow_html=True)
+        col1, col2 = st.columns([1,1])
+        with col1:
+            st.button("Voir les détails", key=f"details_{msg['time']}")
+        with col2:
+            st.button("Exporter", key=f"export_{msg['time']}")
+
+# ========================
+# ZONE DE SAISIE UTILISATEUR
+# ========================
+prompt = st.text_input("Posez votre question ici... (ex: 'Quels sont nos meilleurs agents ?')", value=st.session_state.get("prompt", ""))
+if st.button("Envoyer"):
+    if prompt.strip():
+        st.session_state.messages.append({"role": "user", "content": prompt, "time": datetime.now().strftime("%H:%M")})
+        # --- LOGIQUE IA + BDD ---
+        conn = get_db_connection()
+        sql, result = kpi_sql_response(prompt, conn)
+        if sql and result:
+            # On formate le résultat pour l'envoyer à OpenAI
+            result_str = str(result)
+            ai_prompt = f"Question : {prompt}\n\nRequête SQL exécutée : {sql}\n\nRésultat brut : {result_str}\n\nExplique ce résultat de façon claire et synthétique pour un manager business."
+            response = ask_openai(ai_prompt, OPENAI_API_KEY)
+        else:
+            # Si pas de SQL, on demande directement à OpenAI
+            response = ask_openai(prompt, OPENAI_API_KEY)
+        st.session_state.messages.append({"role": "assistant", "content": response, "time": datetime.now().strftime("%H:%M")})
+        st.session_state.prompt = ""
+    st.experimental_rerun()
