@@ -8,6 +8,7 @@ import time
 import random
 from datetime import datetime
 import streamlit.components.v1 as components
+import os
 
 # Configuration de la page
 st.set_page_config(
@@ -63,6 +64,40 @@ st.markdown("""
             color: #858585;
             font-size: 0.8rem;
             float: right;
+        }
+        .user-bubble {
+            background: #2d2d2d;
+            border-left: 4px solid #007acc;
+            border-radius: 0.7rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            max-width: 70%;
+            margin-left: auto;
+        }
+        .assistant-bubble {
+            background: #252526;
+            border-left: 4px solid #4ec9b0;
+            border-radius: 0.7rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            max-width: 70%;
+            margin-right: auto;
+        }
+        .sidebar-metric {
+            background: #252526;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-metric-title {
+            color: #858585;
+            font-size: 0.9rem;
+        }
+        .sidebar-metric-value {
+            color: #4ec9b0;
+            font-size: 1.5rem;
+            font-weight: bold;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -1144,21 +1179,22 @@ if prompt := st.chat_input("Posez votre question ici... (ex: 'Quels sont nos mei
 
 # Barre latérale
 with st.sidebar:
-    st.title("📊 Statistiques")
+    st.title("📊 Statistiques Rapides")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Agents", "42")
-    col2.metric("Équipes", "5")
-    col3.metric("Satisfaction", "4.2/5")
+    col1.markdown('<div class="sidebar-metric"><div class="sidebar-metric-title">Agents</div><div class="sidebar-metric-value">42</div></div>', unsafe_allow_html=True)
+    col2.markdown('<div class="sidebar-metric"><div class="sidebar-metric-title">Équipes</div><div class="sidebar-metric-value">5</div></div>', unsafe_allow_html=True)
+    col3.markdown('<div class="sidebar-metric"><div class="sidebar-metric-title">Satisfaction</div><div class="sidebar-metric-value">4.2/5</div></div>', unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("💡 Exemples")
-    ex_q = st.radio("Questions rapides :", [
+    st.subheader("💡 Exemples de questions")
+    examples = [
         "Quels sont nos meilleurs agents ?",
         "Comment évolue la performance moyenne ?",
         "Quelle équipe a la meilleure performance ?",
         "Comparer les performances des équipes"
-    ], key="ex_q_radio")
-    if st.button("Utiliser cette question"):
-        st.session_state.prompt = ex_q
+    ]
+    for ex in examples:
+        if st.button(ex, key=f"ex_{ex}"):
+            st.session_state["prompt"] = ex
     st.markdown("---")
     st.subheader("🛠️ Outils")
     st.button("Exporter l'historique")
@@ -1166,4 +1202,4 @@ with st.sidebar:
     st.button("Paramètres")
     st.markdown("---")
     st.subheader("❓ Aide")
-    st.info("Posez des questions précises pour des réponses pertinentes.")
+    st.info("Posez des questions précises pour des réponses pertinentes. Utilisez des critères spécifiques. Combinez plusieurs filtres.")
